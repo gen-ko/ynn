@@ -2,6 +2,7 @@ import os
 import sys
 from src import load_data
 from src import plot_data
+from src import layer
 import matplotlib.pyplot as plt
 
 
@@ -21,6 +22,8 @@ data_test_filepath = os.path.join(data_filepath, data_test_filename)
 # x range [0, 1]
 x_train, y_train = load_data.load_from_path(data_train_filepath)
 
+# warm-up phase
+'''
 print(x_train.shape)
 print(y_train.shape)
 print(y_train)
@@ -31,3 +34,12 @@ x_train_reshaped = plot_data.reshape_row_major(x_train[2550], 28, 28)
 # so data is row majored
 plot_data.plot_image(x_train_reshaped)
 plt.show()
+'''
+#l1 = Layer(784, 100, 10)
+#print(type(l1))
+
+myNN = layer.SingleLayerNetwork(784, 100, 10)
+res = myNN.feed_forward(x_train[25])
+
+
+print("hi")
