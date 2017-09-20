@@ -1,3 +1,5 @@
+# required python version: 3.6+
+
 import os
 import sys
 from src import load_data
@@ -39,9 +41,13 @@ plt.show()
 '''
 #l1 = Layer(784, 100, 10)
 #print(type(l1))
-layer.init_nn()
-myNN = layer.SingleLayerNetwork(784, 100, 10, debug=True)
-myNN.train(x_train, y_train, x_valid, y_valid, epoch=100)
+layer.init_nn(random_seed=2056791)
+myNN = layer.SingleLayerNetwork(784, 100, 10, debug=False, learning_rate=0.01)
+myNN.train(x_train, y_train, x_valid, y_valid, epoch=200)
 #score = myNN.score(x_valid, y_valid)
-
+#myNN2 = layer.MultiLayerNetwork(784, 10, learning_rate=0.001)
+#myNN2.train(x_train, y_train, x_valid, y_valid, epoch=100)
+#myNN3 = layer.SingleLayerNetwork(784, 100, 10, debug=False, learning_rate=0.2)
+#myNN3.train_setting(epoch=200, learning_rate=0.01, batch_size=128, weight_decay=0.001, momentum=0.9)
+#myNN3.train_in_batch(x_train, y_train, x_valid, y_valid)
 print("hi")
