@@ -2,24 +2,27 @@
 
 import os
 import sys
-from src import load_data
+import src.load_data as load_data
 from src import plot_data
 from src import layer
+import src.network as network
 import matplotlib.pyplot as plt
 import numpy
-
+import os
 
 #  format of data
 # disitstrain.txt contains 3000 lines, each line 785 numbers, comma delimited
 
+full_path = os.path.realpath(__file__)
+path, filename = os.path.split(full_path)
 data_filepath = '../data'
 data_train_filename = 'digitstrain.txt'
 data_valid_filename = 'digitsvalid.txt'
 data_test_filename = 'digitstest.txt'
 
-data_train_filepath = os.path.join(data_filepath, data_train_filename)
-data_valid_filepath = os.path.join(data_filepath, data_valid_filename)
-data_test_filepath = os.path.join(data_filepath, data_test_filename)
+data_train_filepath = os.path.join(path, data_filepath, data_train_filename)
+data_valid_filepath = os.path.join(path, data_filepath, data_valid_filename)
+data_test_filepath = os.path.join(path, data_filepath, data_test_filename)
 
 
 # x range [0, 1]
@@ -41,9 +44,9 @@ plt.show()
 '''
 #l1 = Layer(784, 100, 10)
 #print(type(l1))
-layer.init_nn(random_seed=2056791)
-myNN = layer.SingleLayerNetwork(784, 100, 10, debug=False, learning_rate=0.01)
-myNN.train(x_train, y_train, x_valid, y_valid, epoch=200)
+network.init_nn(random_seed=2056791)
+myNN = network.SingleLayerNetwork(784, 100, 10, debug=False, learning_rate=0.01)
+myNN.train_trace(x_train, y_train, x_valid, y_valid, epoch=200)
 #score = myNN.score(x_valid, y_valid)
 #myNN2 = layer.MultiLayerNetwork(784, 10, learning_rate=0.001)
 #myNN2.train(x_train, y_train, x_valid, y_valid, epoch=100)

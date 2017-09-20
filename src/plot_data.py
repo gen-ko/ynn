@@ -9,3 +9,5 @@ def reshape_row_major(x, num_row, num_column):
 def plot_image(x_reshaped):
 
     return plt.imshow(x_reshaped, cmap='gray')
+
+#def plot_error()
