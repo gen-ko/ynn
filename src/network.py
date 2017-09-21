@@ -1,20 +1,16 @@
 import numpy
+import pickle
 from src import layer
 
 # initialize the neural network constructor before using
 def init_nn(random_seed=1099):
     # set a random seed to ensure the consistence between different runs
-    numpy.random.seed(random_seed)
+    nn_random_state = numpy.random.RandomState(seed=random_seed)
     return
 
 class NeuralNetwork(object):
-
-    @property
-    def num_class(self):
-        return self._num_class
-
-    def __init__(self, layer_list: [layer.Layer], learning_rate=0.01, regularizer=0.00, num_class=10, debug=False):
-        self.num_layer = len(layer_list)
+    def __init__(self, layer_list: [layer.Layer], num_class, learning_rate=0.01, regularizer=0.0001, debug=False):
+        self._num_layer = len(layer_list)
         self.layers = layer_list
         self._H = [numpy.zeros((layer_list[0].input_dimension, 1), dtype=numpy.float64)]
         self._H += [[numpy.zeros((layer.output_dimension, 1), dtype=numpy.float64)] for layer in self.layers]
@@ -23,14 +19,18 @@ class NeuralNetwork(object):
         self._num_class = num_class
         self._debug = debug
         self.epoch = 200
+        
+    def update(self):
+        for i in range(0, self._num_layer, 1):
+            self.layers[i].update(self._delta_w[i], self._delta_b[i])
 
 
     def forward_propagation(self, x):
         # x shape (sample_dimension, 1)
         self._H[0] = x.reshape(x.shape[0], 1)
-        for i in range(0, self.num_layer, 1):
+        for i in range(0, self._num_layer, 1):
             self._H[i + 1] = self.layers[i].forward(self._H[i])
-        return self._H[self.num_layer]
+        return self._H[self._num_layer]
 
 
     def debug_gradient_w(self, k, y):
@@ -67,10 +67,10 @@ class NeuralNetwork(object):
         self.forward_propagation(self._H[0])
 
     def back_propagation(self, y):
-        g_a = self._H[self.num_layer].transpose()
+        g_a = self._H[self._num_layer].transpose()
         # Assuming label y range from 0, 1, ...,
         g_a[0, y] -= 1.0
-        for k in range(self.num_layer, 1, -1):
+        for k in range(self._num_layer, 1, -1):
             g_w = numpy.dot(g_a.transpose(), self._H[k - 1].transpose())
             if self._debug:
                 self.debug_gradient_w(k, y)
@@ -88,7 +88,7 @@ class NeuralNetwork(object):
 
     def back_propagation_batch(self, avg_H):
         g_a = avg_H[-1].transpose()
-        for k in range(self.num_layer, 1, -1):
+        for k in range(self._num_layer, 1, -1):
             g_w = numpy.dot(g_a.transpose(), avg_H[k - 1].transpose())
             self.layers[k - 1].update_w(self._alpha, self._lambda, g_w)
             g_b = g_a
@@ -128,7 +128,7 @@ class NeuralNetwork(object):
         train_error = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
         valid_error = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
         for j in range(epoch):
-            print('\t', j, '\t', sep='', end=' ')
+            
             shuffle_idx = numpy.arange(y_train.shape[0])
             numpy.random.shuffle(shuffle_idx)
             train_score = 0.0
@@ -148,7 +148,13 @@ class NeuralNetwork(object):
             valid_error[j] = (1.0 - self.score(x_valid, y_valid))
             train_error.dump('./temp/train_error.dump')
             valid_error.dump('./temp/valid_error.dump')
+            print('\t', j, '\t', sep='', end=' ')
             print('\t', train_error[j], '\t', valid_error[j], '\t', sep='')
+        self.dump()
+    
+    def dump(self):
+        pickle.dump(self, open('./temp/network.dump', 'wb'))
+        
 
     def train_setting(self, epoch=100, learning_rate = 0.01, batch_size = 128, weight_decay=0.00, momentum= 0.0, early_stop=False, debug=False):
         self.epoch = epoch
@@ -185,7 +191,7 @@ class NeuralNetwork(object):
                     y = self.pick_class()
                     if y == y_train[idx_batch[t]]:
                         train_score += 1.0
-                    for k in range(self.num_layer):
+                    for k in range(self._num_layer):
                         sum_h[k] += self._H[k] / x_batch.shape[0]
                 self.back_propagation_batch(sum_h)
 
@@ -199,7 +205,7 @@ class NeuralNetwork(object):
             self.forward_propagation(x)
             max_prob = 0.0
             current_class = 0
-            for j in range(self.num_class):
+            for j in range(self._num_class):
                 current_prob = self._H[-1][j]
                 if current_prob > max_prob:
                     current_class = j
@@ -210,7 +216,7 @@ class NeuralNetwork(object):
     def pick_class(self):
         max_prob = 0.0
         current_class = 0
-        for j in range(self.num_class):
+        for j in range(self._num_class):
             current_prob = self._H[-1][j]
             if current_prob > max_prob:
                 current_class = j
@@ -226,12 +232,7 @@ class NeuralNetwork(object):
         return (correct_count + 0.0) / float(Y.size)
 
 
-class SingleLayerNetwork(NeuralNetwork):
-    def __init__(self, input_dimension, hidden_dimension, output_dimension, learning_rate=0.01, debug=False):
-        layer0 = layer.SigmoidLayer(input_dimension, hidden_dimension)
-        layer1 = layer.SoftmaxLayer(hidden_dimension, output_dimension)
-        layer_list = [layer0, layer1]
-        NeuralNetwork.__init__(self, layer_list, learning_rate=learning_rate, debug=debug)
+
 
 
 class MultiLayerNetwork(NeuralNetwork):

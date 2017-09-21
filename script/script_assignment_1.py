@@ -5,6 +5,7 @@ import sys
 import src.load_data as load_data
 from src import plot_data
 from src import layer
+from src.network import NeuralNetwork as NN
 import src.network as network
 import matplotlib.pyplot as plt
 import numpy
@@ -43,9 +44,18 @@ plot_data.plot_image(x_train_reshaped)
 plt.show()
 '''
 #l1 = Layer(784, 100, 10)
-#print(type(l1))
+print("start initiliazing...")
 network.init_nn(random_seed=2056791)
-myNN = network.SingleLayerNetwork(784, 100, 10, debug=False, learning_rate=0.01)
+
+random_state = numpy.random.RandomState(seed=2056791)
+
+
+layers = [layer.SigmoidLayer(784, 100),
+          layer.SoftmaxLayer(100, 10)]
+
+myNN = NN(layers, learning_rate=0.01, debug=False, num_class=10)
+
+
 myNN.train_trace(x_train, y_train, x_valid, y_valid, epoch=200)
 #score = myNN.score(x_valid, y_valid)
 #myNN2 = layer.MultiLayerNetwork(784, 10, learning_rate=0.001)

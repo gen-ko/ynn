@@ -17,9 +17,9 @@ class Layer(object):
         b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
         self.w = (numpy.random.rand(input_dimension, output_dimension) - 0.5) * 2 * b
         # the shape of formal weights w, where a = w^T x + b
-        self._w_shape = (numpy.random.rand(output_dimension, input_dimension) - 0.5) * 2 * b
+        self._w_shape = (nn_random_state.uniform(low=-b, high=b, size=(output_dimension, input_dimension))
         # self._w is of shape (output_dimension, input_dimension)
-        self._w = (numpy.random.rand(output_dimension, input_dimension) - 0.5) * 2
+        self._w = (nn_random_state.uniform(low=-b, high=b, size=(input_dimension, output_dimension))
         self.b = numpy.zeros((output_dimension, 1), dtype=numpy.float64)
         # formal b is of shape (output_dimension, )
         self._b = numpy.zeros((output_dimension, ), dtype=numpy.float64)
@@ -53,6 +53,10 @@ class Layer(object):
         self._delta_b = g_b.transpose() + self.momentum * self._delta_b
         delta = -self._delta_b
         self.b += learning_rate * delta
+        
+    def update(self, delta_w, delta_b):
+        self._w += delta_w
+        self._b += delta_b
 
 
 class SigmoidLayer(Layer):
