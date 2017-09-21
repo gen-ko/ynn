@@ -2,7 +2,6 @@ import numpy
 import math
 
 
-
 class Layer(object):
     # assume current layer is the k'th layer
 
@@ -15,11 +14,10 @@ class Layer(object):
         self._output_dimension = output_dimension
         # w shall be draw from [-b, b]
         b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
-        self.w = (numpy.random.rand(input_dimension, output_dimension) - 0.5) * 2 * b
+        self.w = numpy.random.uniform(low=-b, high=b, size=(input_dimension, output_dimension))
         # the shape of formal weights w, where a = w^T x + b
-        self._w_shape = (nn_random_state.uniform(low=-b, high=b, size=(output_dimension, input_dimension))
         # self._w is of shape (output_dimension, input_dimension)
-        self._w = (nn_random_state.uniform(low=-b, high=b, size=(input_dimension, output_dimension))
+        self._w = numpy.random.uniform(low=-b, high=b, size=(output_dimension, input_dimension))
         self.b = numpy.zeros((output_dimension, 1), dtype=numpy.float64)
         # formal b is of shape (output_dimension, )
         self._b = numpy.zeros((output_dimension, ), dtype=numpy.float64)
@@ -35,13 +33,13 @@ class Layer(object):
         raise ValueError('Calling a virtual function')
 
     def forward_slow(self, x):
-        return self.activation(numpy.dot(self.w.transpose(), x) + self.b)
+        return self.activation(numpy.dot(self.w.T, x) + self.b)
                    
     def forward_single(self, x):
         return self.activation(numpy.dot(self._w, x) + self._b)
     
     def forward_batch(self, x):
-        return self.activation(numpy.dot(self._w, x) + numpy.tile(self._b, (x.shape[1], 1).T)
+        return self.activation(numpy.dot(self._w, x) + numpy.tile(self._b, (x.shape[1], 1).T))
 
     def gradient_a(self, gradient_h, h):
         g_a = numpy.zeros((1, self.output_dimension), dtype=numpy.float64)

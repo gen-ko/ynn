@@ -45,7 +45,7 @@ plt.show()
 '''
 #l1 = Layer(784, 100, 10)
 print("start initiliazing...")
-network.init_nn(random_seed=2056791)
+network.init_nn(random_seed=20791)
 
 random_state = numpy.random.RandomState(seed=2056791)
 

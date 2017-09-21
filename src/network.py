@@ -2,10 +2,11 @@ import numpy
 import pickle
 from src import layer
 
+
 # initialize the neural network constructor before using
 def init_nn(random_seed=1099):
     # set a random seed to ensure the consistence between different runs
-    nn_random_state = numpy.random.RandomState(seed=random_seed)
+    numpy.random.RandomState(seed=random_seed)
     return
 
 class NeuralNetwork(object):
@@ -124,9 +125,11 @@ class NeuralNetwork(object):
 
     def train_trace(self, x_train, y_train, x_valid, y_valid, epoch):
         print('------------------ Start Training -----------------')
-        print('\tepoch\t|\ttrain error\t|\tvalid error\t|\t')
+        print('\tepoch\t|\ttrain error\t|\tvalid error\t|\ttrain loss\t|\tvalid loss\t')
         train_error = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
         valid_error = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
+        self._loss = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
+        self._loss_valid = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
         for j in range(epoch):
             
             shuffle_idx = numpy.arange(y_train.shape[0])
@@ -137,23 +140,39 @@ class NeuralNetwork(object):
                 x = x_train[idx]
                 x = x.reshape(x.shape[0], 1)
                 self.forward_propagation(x)
+                self._loss[j] += self.cross_entropy_loss(y_train[idx])
                 y = self.pick_class()
                 if y == y_train[idx]:
                     train_score += 1.0
 
                 self.back_propagation(y_train[idx])
             # start a validation
-
+            self._loss[j] = self._loss[j] / y_train.shape[0]
             train_error[j] = (1.0 - train_score/y_train.shape[0])
-            valid_error[j] = (1.0 - self.score(x_valid, y_valid))
+
+            valid_score = 0.0
+            for i in range(y_valid.size):
+                self.forward_propagation(x_valid[i].reshape(x_valid[i].shape[0], 1))
+                self._loss_valid[j] += self.cross_entropy_loss(y_valid[i])
+                y = self.pick_class()
+                if y == y_valid[i]:
+                    valid_score += 1.0
+
+
+            self._loss_valid[j] = self._loss_valid[j] / y_train.shape[0]
+            valid_error[j] = (1.0 - valid_score/y_valid.shape[0])
+
             train_error.dump('./temp/train_error.dump')
             valid_error.dump('./temp/valid_error.dump')
             print('\t', j, '\t', sep='', end=' ')
-            print('\t', train_error[j], '\t', valid_error[j], '\t', sep='')
+            print('\t', train_error[j], '\t', valid_error[j], '\t', self._loss[j], '\t', self._loss_valid[j], '\t', sep='')
         self.dump()
     
     def dump(self):
         pickle.dump(self, open('./temp/network.dump', 'wb'))
+
+    def cross_entropy_loss(self, y):
+        return -numpy.log(self._H[-1][y])
         
 
     def train_setting(self, epoch=100, learning_rate = 0.01, batch_size = 128, weight_decay=0.00, momentum= 0.0, early_stop=False, debug=False):
