@@ -29,7 +29,7 @@ class NeuralNetwork(object):
         # x shape (sample_dimension, 1)
         self._H[0] = x.reshape(x.shape[0], 1)
         for i in range(0, self._num_layer, 1):
-            self._H[i + 1] = self.layers[i].forward(self._H[i])
+            self._H[i + 1] = self.layers[i].forward_slow(self._H[i])
         return self._H[self._num_layer]
 
 

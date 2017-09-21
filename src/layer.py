@@ -34,8 +34,14 @@ class Layer(object):
     def derivative(self, h):
         raise ValueError('Calling a virtual function')
 
-    def forward(self, x):
+    def forward_slow(self, x):
         return self.activation(numpy.dot(self.w.transpose(), x) + self.b)
+                   
+    def forward_single(self, x):
+        return self.activation(numpy.dot(self._w, x) + self._b)
+    
+    def forward_batch(self, x):
+        return self.activation(numpy.dot(self._w, x) + numpy.tile(self._b, (x.shape[1], 1).T)
 
     def gradient_a(self, gradient_h, h):
         g_a = numpy.zeros((1, self.output_dimension), dtype=numpy.float64)
