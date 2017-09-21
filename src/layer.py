@@ -43,6 +43,9 @@ class Layer(object):
         for i in range(deri.shape[0]):
             g_a[0, i] = deri[i] * gradient_h[0, i]
         return g_a
+                   
+    def gradient(self):
+        return
 
     def update_w(self, learning_rate, regular, g_w):
         self.delta_w = g_w.transpose() + self.momentum * self.delta_w
