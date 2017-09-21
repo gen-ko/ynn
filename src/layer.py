@@ -85,6 +85,27 @@ class SigmoidLayer(FullConnectLayer):
         return numpy.array([hi * (1 - hi) for hi in h])
 
 
+class ReLULayer(FullConnectLayer):
+    def __init__(self, input_dimension, output_dimension):
+        FullConnectLayer.__init__(self, input_dimension, output_dimension)
+
+    def activation(self, x):
+        return numpy.array([max(xi, 0) for xi in x]).reshape(x.shape)
+
+    def derivative(self, h):
+        return numpy.array([max(numpy.sign(hi), 0) for hi in h])
+
+
+class TanhLayer(FullConnectLayer):
+    def __init__(self, input_dimension, output_dimension):
+        FullConnectLayer.__init__(self, input_dimension, output_dimension)
+
+    def activation(self, x):
+        return numpy.tanh(x).reshape(x.shape)
+
+    def derivative(self, h):
+        return numpy.array([1.0 - hi**2 for hi in h])
+
 
 class SoftmaxLayer(FullConnectLayer):
     def __init__(self, input_dimension, output_dimension):
