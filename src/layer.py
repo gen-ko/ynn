@@ -1,17 +1,25 @@
 import numpy
 import math
 
-
 class Layer(object):
+    def __init__(self, input_dimension, output_dimension):
+        self._input_dimension = input_dimension
+        self._output_dimension = output_dimension
+
+    def forward_propagation(self):
+        raise ValueError('Calling a virtual function')
+
+    def gradients(self):
+        raise ValueError('Calling a virtual function')
+
+    def update(self):
+        raise ValueError('Calling a virtual function')
+
+class FullConnectLayer(Layer):
     # assume current layer is the k'th layer
 
-    def __init__(self, input_dimension, output_dimension, momentum=0.9):
-        self.input_dimension = input_dimension
-        # a read-only version
-        self._input_dimension = input_dimension
-        self.output_dimension = output_dimension
-        # a read-only version
-        self._output_dimension = output_dimension
+    def __init__(self, input_dimension, output_dimension):
+        Layer.__init__(self, input_dimension, output_dimension)
         # w shall be draw from [-b, b]
         b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
         self.w = numpy.random.uniform(low=-b, high=b, size=(input_dimension, output_dimension))
@@ -21,8 +29,7 @@ class Layer(object):
         self.b = numpy.zeros((output_dimension, 1), dtype=numpy.float64)
         # formal b is of shape (output_dimension, )
         self._b = numpy.zeros((output_dimension, ), dtype=numpy.float64)
-        # momentum can be modified per run of trainning
-        self.momentum = momentum
+        # momentum can be modified per run of training
         self.delta_w = numpy.zeros(shape=self.w.shape, dtype=numpy.float64)
         self._delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float64)
 
@@ -42,7 +49,7 @@ class Layer(object):
         return self.activation(numpy.dot(self._w, x) + numpy.tile(self._b, (x.shape[1], 1).T))
 
     def gradient_a(self, gradient_h, h):
-        g_a = numpy.zeros((1, self.output_dimension), dtype=numpy.float64)
+        g_a = numpy.zeros((1, self._output_dimension), dtype=numpy.float64)
         deri = self.derivative(h)
         for i in range(deri.shape[0]):
             g_a[0, i] = deri[i] * gradient_h[0, i]
@@ -51,13 +58,13 @@ class Layer(object):
     def gradient(self):
         return
 
-    def update_w(self, learning_rate, regular, g_w):
-        self.delta_w = g_w.transpose() + self.momentum * self.delta_w
+    def update_w(self, g_w, learning_rate, regular, momentum):
+        self.delta_w = g_w.transpose() + momentum * self.delta_w
         delta = -self.delta_w - regular * 2.0 * self.w
         self.w += learning_rate * delta
 
-    def update_b(self, learning_rate, regular, g_b):
-        self._delta_b = g_b.transpose() + self.momentum * self._delta_b
+    def update_b(self, g_b, learning_rate, regular, momentum):
+        self._delta_b = g_b.transpose() + momentum * self._delta_b
         delta = -self._delta_b
         self.b += learning_rate * delta
         
@@ -66,9 +73,9 @@ class Layer(object):
         self._b += delta_b
 
 
-class SigmoidLayer(Layer):
-    def __init__(self, input_dimension, output_dimension, prev_layer=None):
-        Layer.__init__(self, input_dimension, output_dimension)
+class SigmoidLayer(FullConnectLayer):
+    def __init__(self, input_dimension, output_dimension):
+        FullConnectLayer.__init__(self, input_dimension, output_dimension)
 
     def activation(self, x):
         x = numpy.clip(x, -500.0, 500.0)
@@ -79,9 +86,9 @@ class SigmoidLayer(Layer):
 
 
 
-class SoftmaxLayer(Layer):
+class SoftmaxLayer(FullConnectLayer):
     def __init__(self, input_dimension, output_dimension):
-        Layer.__init__(self, input_dimension, output_dimension)
+        FullConnectLayer.__init__(self, input_dimension, output_dimension)
 
     def activation(self, x):
         expi = numpy.array([math.exp(xi) for xi in x])

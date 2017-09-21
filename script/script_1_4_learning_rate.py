@@ -50,17 +50,36 @@ network.init_nn(random_seed=20791)
 random_state = numpy.random.RandomState(seed=2056791)
 
 
-layers = [layer.SigmoidLayer(784, 100),
-          layer.SoftmaxLayer(100, 10)]
 
-myNN = NN(layers, learning_rate=0.01, debug=False, momentum=0.9, regularizer=0.001)
+'''
+myNN = NN(layers, learning_rate=0.01, debug=False, regularizer=0.001, momentum=0.9)
 
 
-myNN.train_trace(x_train, y_train, x_valid, y_valid, epoch=200)
-#score = myNN.score(x_valid, y_valid)
-#myNN2 = layer.MultiLayerNetwork(784, 10, learning_rate=0.001)
-#myNN2.train(x_train, y_train, x_valid, y_valid, epoch=100)
-#myNN3 = layer.SingleLayerNetwork(784, 100, 10, debug=False, learning_rate=0.2)
-#myNN3.train_setting(epoch=200, learning_rate=0.01, batch_size=128, weight_decay=0.001, momentum=0.9)
-#myNN3.train_in_batch(x_train, y_train, x_valid, y_valid)
-print("hi")
+myNN.train_dump(x_train, y_train, x_valid, y_valid, epoch=200, dump_file=os.path.join(path, '../temp/network-2.dump'))
+'''
+'''
+myNN = NN(layers, learning_rate=0.01, debug=False, regularizer=0.0001, momentum=0.9)
+
+
+myNN.train_dump(x_train, y_train, x_valid, y_valid, epoch=200, dump_file=os.path.join(path, '../temp/network-3.dump'))
+
+'''
+
+learning_rates = [0.1, 0.01, 0.2, 0.5]
+momentums = [0.0, 0.5, 0.9]
+hidden_units = [20, 100, 200, 500]
+regularizers = [0.0, 0.0001, 0.001]
+
+for i1 in range(len(hidden_units)):
+    for i2 in range(len(regularizers)):
+        for i3 in range(len(momentums)):
+            for i4 in range(len(learning_rates)):
+                layers = [layer.SigmoidLayer(784, hidden_units[i1]),
+                          layer.SoftmaxLayer(hidden_units[i1], 10)]
+                name = 'network-' + str(i1) + '-' + str(i2) + '-' + str(i3) + '-' + str(i4) + '.dump'
+                myNN = NN(layers, learning_rate=learning_rates[i4], regularizer=regularizers[i2], momentum=momentums[i3])
+                myNN.train_dump(x_train, y_train, x_valid, y_valid, epoch=300,
+                                dump_file=os.path.join(path, '../temp', name))
+
+
+print('training finished')
