@@ -81,7 +81,7 @@ for i1 in range(len(hidden_units)):
                           layer.SoftmaxLayer(hidden_units[i1], 10)]
                 name = 'network-' + str(i1) + '-' + str(i2) + '-' + str(i3) + '-' + str(i4) + '.dump'
                 myNN = NN(layers, learning_rate=learning_rates[i4], regularizer=regularizers[i2], momentum=momentums[i3])
-                myNN.train_dump(x_train, y_train, x_valid, y_valid, epoch=300,
+                myNN.train(x_train, y_train, x_valid, y_valid, epoch=300,
                                 dump_file=os.path.join(path, '../temp', name))
 
 

@@ -27,6 +27,10 @@ class NeuralNetwork_Dumpable(object):
         self.epoch = 200
         self._momentum = momentum
         self.g_h: list
+        self.train_error = numpy.zeros(shape=(1,), dtype=numpy.float64)
+        self.valid_error = numpy.zeros(shape=(1,), dtype=numpy.float64)
+        self.train_loss = numpy.zeros(shape=(1,), dtype=numpy.float64)
+        self.valid_loss = numpy.zeros(shape=(1,), dtype=numpy.float64)
 
     def forward_propagation(self, x):
         # x shape (sample_dimension, 1)
@@ -45,13 +49,17 @@ class NeuralNetwork_Dumpable(object):
         for i in range(self._num_layer - 1, -1, -1):
             g_h = self.layers[i].backward(g_h, h_out=self._H[i + 1], h_in=self._H[i])
 
-    def train(self, x_train, y_train, x_valid, y_valid, epoch, dump_file, batch_size=1):
+    def update(self):
+        for layer in self.layers:
+            layer.update(self._learning_rate, self._regularizer, self._momentum)
+
+    def train(self, x_train, y_train, x_valid, y_valid, epoch, dump_file, batch_size=128):
         print('------------------ Start Training -----------------')
-        print('\tepoch\t|\ttrain error\t|\tvalid error\t|\ttrain loss\t|\tvalid loss\t')
-        self._train_error = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
-        self._valid_error = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
-        self._train_loss = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
-        self._valid_loss = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
+        print('\tepoch\t|\ttrain loss\t|\ttrain error\t|\tvalid loss\t|\tvalid error\t')
+        self.train_error = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
+        self.valid_error = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
+        self.train_loss = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
+        self.valid_loss = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
         for j in range(epoch):
             shuffle_idx = numpy.arange(y_train.shape[0])
             numpy.random.shuffle(shuffle_idx)
@@ -62,33 +70,37 @@ class NeuralNetwork_Dumpable(object):
                 y_batch = y_train[idx]
                 x = x.T
                 self.fprop(x)
-                self._train_loss[j] += self.cross_entropy_loss(y_batch)
-                y = self.pick_class()
-                if y == y_train[idx]:
-                    train_score += 1.0
+                self.train_loss[j] += self.cross_entropy_loss(y_batch)
+                y_predict = self.pick_class()
+                train_score += numpy.sum(y_predict == y_batch)
                 self.bprop(y_batch)
+                self.update()
             # start a validation
-            self._train_loss[j] = self._train_loss[j] / y_train.shape[0]
-            self._train_error[j] = (1.0 - train_score / y_train.shape[0])
+            self.train_loss[j] = self.train_loss[j] / y_train.shape[0]
+            self.train_error[j] = (1.0 - train_score / y_train.shape[0])
+            self.valid_pass(x_valid, y_valid, j)
 
-            valid_score = 0.0
-            for i in range(y_valid.size):
-                self.forward_propagation(x_valid[i].reshape(x_valid[i].shape[0], 1))
-                self._valid_loss[j] += self.cross_entropy_loss(y_valid[i])
-                y = self.pick_class()
-                if y == y_valid[i]:
-                    valid_score += 1.0
-
-            self._valid_loss[j] = self._valid_loss[j] / y_train.shape[0]
-            self._valid_error[j] = (1.0 - valid_score / y_valid.shape[0])
 
             print('\t', j, '\t', sep='', end=' ')
-            print('\t|\t ', "{0:.5f}".format(self._train_error[j]),
-                  '  \t|\t ', "{0:.5f}".format(self._valid_error[j]),
-                  '  \t|\t ', "{0:.5f}".format(self._train_loss[j]),
-                  '  \t|\t ', "{0:.5f}".format(self._valid_loss[j]), '\t',
+            print('\t|\t ', "{0:.5f}".format(self.train_loss[j]),
+                  '  \t|\t ', "{0:.5f}".format(self.train_error[j]),
+                  '  \t|\t ', "{0:.5f}".format(self.valid_loss[j]),
+                  '  \t|\t ', "{0:.5f}".format(self.valid_error[j]),
+                  '\t',
                   sep='')
-        self.dump(dump_file=dump_file)
+            if (j + 1) % 20 == 0:
+                self.dump(dump_file=dump_file)
+        return
+
+    def valid_pass(self, x_valid, y_valid, epoch):
+        self.fprop(x_valid.T)
+        self.valid_loss[epoch] = self.cross_entropy_loss(y_valid)
+        y_predict = self.pick_class()
+        valid_score = numpy.sum(y_predict == y_valid)
+        self.valid_loss[epoch] /= y_valid.shape[0]
+        self.valid_error[epoch] = 1.0 - valid_score / y_valid.shape[0]
+
+
 
 
 
@@ -99,8 +111,12 @@ class NeuralNetwork_Dumpable(object):
 
     def cross_entropy_loss(self, y):
         loss = 0.0
-        for i in range(len(y)):
-            loss += -numpy.log(self._H[-1][y[i], i])
+        for i in range(y.size):
+            h_out = self._H[-1]
+            try:
+                loss += -numpy.log(h_out[y[i], i])
+            except:
+                print('er')
         return loss
         
 
@@ -130,11 +146,12 @@ class NeuralNetwork_Dumpable(object):
         return Y
 
     def pick_class(self):
-        max_prob = 0.0
+
         current_class = numpy.zeros(len(self._H[-1][0, :]))
         for i in range(current_class.size):
+            max_prob = 0.0
             for j in range(self._num_class):
-                current_prob = self._H[-1][j]
+                current_prob = self._H[-1][j, i]
                 if current_prob > max_prob:
                     current_class[i] = j
                     max_prob = current_prob
