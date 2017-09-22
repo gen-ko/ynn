@@ -1,6 +1,7 @@
 import numpy
 import math
 from src import ytensor
+from src.ytensor import Yarray
 
 class Layer(object):
     def __init__(self, input_dimension, output_dimension):
@@ -8,6 +9,9 @@ class Layer(object):
         self._output_dimension = output_dimension
 
     def forward(self, x):
+        raise ValueError('Calling a virtual function')
+
+    def backward(self, h_in, h_out, gradient_h):
         raise ValueError('Calling a virtual function')
 
     def gradients(self):
@@ -20,23 +24,41 @@ class Layer(object):
 class FullConnected(Layer):
     def initialize(self):
         b = math.sqrt(6.0) / math.sqrt(self._input_dimension + self._output_dimension + 0.0)
-        self._w = numpy.random.uniform(low=-b, high=b, size=(self._output_dimension, self._input_dimension))
-        self._b = numpy.zeros((self._output_dimension,), dtype=numpy.float64)
-        self.delta_w = numpy.zeros(shape=self._w.shape, dtype=numpy.float64)
-        self.delta_b = numpy.zeros(shape=self._b.shape, dtype=numpy.float64)
+        self._w = Yarray(numpy.random.uniform(low=-b, high=b, size=(self._input_dimension, self._output_dimension)))
+        self._b = Yarray(numpy.zeros((self._output_dimension,), dtype=numpy.float64))
+        self._delta_w = Yarray(numpy.zeros(shape=self._w.shape, dtype=numpy.float64))
+        self._delta_b = Yarray(numpy.zeros(shape=self._b.shape, dtype=numpy.float64))
 
     def set_hyperparameter(self, learning_rate=0.01, momentum=0.9, regularizer=0.0001):
         self._learning_rate = learning_rate
         self._momentum = momentum
-        self._regularizer = regularizer
+        self._regularizer = regularizer * 2
 
     def activation(self, a):
         raise ValueError('Calling a virtual function')
 
-    def forward(self, x):
-        return self.activation(numpy.dot(self._w, x)+self._b)
+    def derivative(self, h):
+        raise ValueError('Calling a virtual function')
 
-    def backward(self, gradient_h):
+    def forward(self, x):
+        return self.activation(ytensor.fma_232(self._w.T, x, self._b))
+
+    def backward(self, h_out, h_in, gradient_h):
+        gradient_a = self.gradient_a(h_out, gradient_h)
+        self._gradient_w = ytensor.dot_33(gradient_a.T, h_in.T)
+        self._gradient_b = gradient_a.T
+        return ytensor.dot_32(gradient_a, self._w.T)
+
+    def gradient_a(self, h, gradient_h):
+        return ytensor.inner_33(gradient_h, self.derivative(h))
+
+    def update(self):
+        self._delta_w = (numpy.average(self._gradient_w, axis=0) + self._w * self._regularizer) * self._learning_rate +\
+                        self._delta_w * self._momentum
+        self._w += self._delta_w
+        self._delta_b = (numpy.average(self._gradient_b, axis=0)) * self._learning_rate +\
+                        self._delta_b * self._momentum
+        self._b += self._delta_b
 
 
 
