@@ -5,7 +5,7 @@ import sys
 import src.load_data as load_data
 from src import plot_data
 from src import layer
-from src.network import NeuralNetwork as NN
+from src.network import NeuralNetwork_Dumpable as NN
 import src.network as network
 import matplotlib.pyplot as plt
 import numpy

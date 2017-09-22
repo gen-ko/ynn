@@ -6,7 +6,7 @@ class Layer(object):
         self._input_dimension = input_dimension
         self._output_dimension = output_dimension
 
-    def forward_propagation(self):
+    def forward(self, x):
         raise ValueError('Calling a virtual function')
 
     def gradients(self):
@@ -14,6 +14,31 @@ class Layer(object):
 
     def update(self):
         raise ValueError('Calling a virtual function')
+
+
+class FullConnected(Layer):
+    def initialize(self):
+        b = math.sqrt(6.0) / math.sqrt(self._input_dimension + self._output_dimension + 0.0)
+        self._w = numpy.random.uniform(low=-b, high=b, size=(self._output_dimension, self._input_dimension))
+        self._b = numpy.zeros((self._output_dimension,), dtype=numpy.float64)
+        self.delta_w = numpy.zeros(shape=self._w.shape, dtype=numpy.float64)
+        self.delta_b = numpy.zeros(shape=self._b.shape, dtype=numpy.float64)
+
+    def set_hyperparameter(self, learning_rate=0.01, momentum=0.9, regularizer=0.0001):
+        self._learning_rate = learning_rate
+        self._momentum = momentum
+        self._regularizer = regularizer
+
+    def activation(self, a):
+        raise ValueError('Calling a virtual function')
+
+    def forward(self, x):
+        return self.activation(numpy.dot(self._w, x)+self._b)
+
+    def backward(self, gradient_h):
+
+
+
 
 class FullConnectLayer(Layer):
     # assume current layer is the k'th layer

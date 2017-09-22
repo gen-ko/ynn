@@ -9,13 +9,49 @@ def init_nn(random_seed=1099):
     numpy.random.RandomState(seed=random_seed)
     return
 
+
 class NeuralNetwork(object):
+    def forward_propagation(self):
+        return
+
+    def back_propagation(self):
+        return
+
+    def update(self):
+        return
+
+    def __init__(self, layers: [layer.Layer]):
+        self._num_layer = len(layers)
+        self._layers = layers
+        self._H = [numpy.zeros((layers[0]._input_dimension, ), dtype=numpy.float64)]
+        self._H += [[numpy.zeros((layer._output_dimension, ), dtype=numpy.float64)] for layer in self._layers]
+        self._learning_rate = 0.01
+        self._regularizer = 0.0001
+        self._debug = False
+        self._epoch = 20
+        self._momentum = 0.9
+        return
+
+    def set_debug(self, debug):
+        self._debug = debug
+
+    def set_hyperparameters(self, learning_rate=0.01, regularizer=0.0001, momentum=0.9):
+        self._learning_rate = learning_rate
+        self._regularizer = regularizer
+        self._momentum = momentum
+
+    def update_
+
+
+
+
+class NeuralNetwork_Dumpable(NeuralNetwork):
     def __init__(self, layer_list: [layer.FullConnectLayer], learning_rate=0.01, regularizer=0.0001, debug=False,
                  momentum=0.9):
+        NeuralNetwork.__init__(self, layers=layer_list)
         self._num_layer = len(layer_list)
         self.layers = layer_list
-        self._H = [numpy.zeros((layer_list[0]._input_dimension, 1), dtype=numpy.float64)]
-        self._H += [[numpy.zeros((layer._output_dimension, 1), dtype=numpy.float64)] for layer in self.layers]
+
         self._learning_rate = learning_rate
         self._regularizer = regularizer
         self._num_class = self.layers[-1]._output_dimension

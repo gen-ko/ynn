@@ -5,7 +5,7 @@ import sys
 import src.load_data as load_data
 from src import plot_data
 from src import layer
-from src.network import NeuralNetwork as NN
+from src.network import NeuralNetwork_Dumpable as NN
 import src.network as network
 import matplotlib.pyplot as plt
 import numpy
@@ -65,10 +65,13 @@ myNN.train_dump(x_train, y_train, x_valid, y_valid, epoch=200, dump_file=os.path
 
 '''
 
-learning_rates = [0.1, 0.01, 0.2, 0.5]
-momentums = [0.0, 0.5, 0.9]
 hidden_units = [20, 100, 200, 500]
 regularizers = [0.0, 0.0001, 0.001]
+momentums = [0.0, 0.5, 0.9]
+learning_rates = [0.1, 0.01, 0.2, 0.5]
+
+
+
 
 for i1 in range(len(hidden_units)):
     for i2 in range(len(regularizers)):
