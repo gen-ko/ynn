@@ -53,14 +53,8 @@ random_state = numpy.random.RandomState(seed=2056791)
 layers = [layer.SigmoidLayer(784, 100),
           layer.SoftmaxLayer(100, 10)]
 
-myNN = NN(layers, learning_rate=0.01, debug=False, momentum=0.9, regularizer=0.001)
+myNN = NN(layers, learning_rate=0.01, debug=False, momentum=0.9, regularizer=0.0001)
 
-
-myNN.train_trace(x_train, y_train, x_valid, y_valid, epoch=200)
-#score = myNN.score(x_valid, y_valid)
-#myNN2 = layer.MultiLayerNetwork(784, 10, learning_rate=0.001)
-#myNN2.train(x_train, y_train, x_valid, y_valid, epoch=100)
-#myNN3 = layer.SingleLayerNetwork(784, 100, 10, debug=False, learning_rate=0.2)
-#myNN3.train_setting(epoch=200, learning_rate=0.01, batch_size=128, weight_decay=0.001, momentum=0.9)
-#myNN3.train_in_batch(x_train, y_train, x_valid, y_valid)
+myNN.train_dump(x_train, y_train, x_valid, y_valid, epoch=300,
+                dump_file=os.path.join(path, '../temp', 'network1-1.dump'))
 print("hi")
