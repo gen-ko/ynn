@@ -77,12 +77,14 @@ for i1 in range(len(hidden_units)):
     for i2 in range(len(regularizers)):
         for i3 in range(len(momentums)):
             for i4 in range(len(learning_rates)):
-                layers = [layer.SigmoidLayer(784, hidden_units[i1]),
-                          layer.SoftmaxLayer(hidden_units[i1], 10)]
+                layers = [layer.Linear(784, 100),
+                          layer.BN(100, 100),
+                          layer.ReLU(100, 100),
+                          layer.BN(100, 100),
+                          layer.SoftmaxLayer(100, 10)]
                 name = 'network-' + str(i1) + '-' + str(i2) + '-' + str(i3) + '-' + str(i4) + '.dump'
                 myNN = NN(layers, learning_rate=learning_rates[i4], regularizer=regularizers[i2], momentum=momentums[i3])
-                myNN.train(x_train, y_train, x_valid, y_valid, epoch=300,
-                                dump_file=os.path.join(path, '../temp', name))
+                myNN.train(x_train, y_train, x_valid, y_valid, epoch=300, batch_size=32)
 
 
 print('training finished')

@@ -1,6 +1,10 @@
 import numpy
 import pickle
 from src import layer
+import os
+from time import gmtime, strftime
+import matplotlib.pyplot as plt
+
 
 
 # initialize the neural network constructor before using
@@ -53,23 +57,33 @@ class NeuralNetwork_Dumpable(object):
         for layer in self.layers:
             layer.update(self._learning_rate, self._regularizer, self._momentum)
 
-    def train(self, x_train, y_train, x_valid, y_valid, epoch, dump_file, batch_size=128):
+    def shuffle(self, x, y):
+        shuffle_idx = numpy.arange(y.size)
+        numpy.random.shuffle(shuffle_idx)
+        x = x[shuffle_idx]
+        y = y[shuffle_idx]
+        return x, y
+
+
+
+    def train(self, x_train, y_train, x_valid, y_valid, epoch, batch_size=128, dump=False):
+        self._dump = dump
         print('------------------ Start Training -----------------')
         print('\tepoch\t|\ttrain loss\t|\ttrain error\t|\tvalid loss\t|\tvalid error\t')
         self.train_error = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
         self.valid_error = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
         self.train_loss = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
         self.valid_loss = numpy.zeros(shape=(epoch,), dtype=numpy.float64)
+        self.batch_size = batch_size
         for j in range(epoch):
-            shuffle_idx = numpy.arange(y_train.shape[0])
-            numpy.random.shuffle(shuffle_idx)
+            x_train, y_train = self.shuffle(x_train, y_train)
             train_score = 0.0
             for i in range(0, y_train.size, batch_size):
-                idx = shuffle_idx[i:i+batch_size]
-                x = x_train[idx]
-                y_batch = y_train[idx]
-                x = x.T
-                self.fprop(x)
+                x_batch = x_train[i : i + batch_size]
+                y_batch = y_train[i : i + batch_size]
+                x_batch = x_batch.T
+
+                self.fprop(x_batch)
                 self.train_loss[j] += self.cross_entropy_loss(y_batch)
                 y_predict = self.pick_class()
                 train_score += numpy.sum(y_predict == y_batch)
@@ -89,8 +103,11 @@ class NeuralNetwork_Dumpable(object):
                   '\t',
                   sep='')
             if (j + 1) % 20 == 0:
-                self.dump(dump_file=dump_file)
+                self.dump()
+                self.visualize(j)
+        self.plot()
         return
+
 
     def valid_pass(self, x_valid, y_valid, epoch):
         self.fprop(x_valid.T)
@@ -100,13 +117,16 @@ class NeuralNetwork_Dumpable(object):
         self.valid_loss[epoch] /= y_valid.shape[0]
         self.valid_error[epoch] = 1.0 - valid_score / y_valid.shape[0]
 
-
-
-
-
-
-    def dump(self, dump_file='./temp/network.dump'):
-        pickle.dump(self, open(dump_file, 'wb'))
+    def dump(self):
+        if not self._dump:
+            return
+        # fix the absolute path of file
+        full_path = os.path.realpath(__file__)
+        path, _ = os.path.split(full_path)
+        time = strftime("%y%m%d%H%M%S", gmtime())
+        filename = time + '-network.dump'
+        figure_path = os.path.join(path, '../temp', filename)
+        pickle.dump(self, open(figure_path, 'wb'))
 
 
     def cross_entropy_loss(self, y):
@@ -119,15 +139,6 @@ class NeuralNetwork_Dumpable(object):
                 print('er')
         return loss
         
-
-    def train_setting(self, epoch=100, learning_rate = 0.01, batch_size = 128, weight_decay=0.00, momentum= 0.0, early_stop=False, debug=False):
-        self.epoch = epoch
-        self.learning_rate = learning_rate
-        self.weight_decay = weight_decay
-        self._momentum = momentum
-        self.batch_size = batch_size
-        self.early_stop = early_stop
-        self._debug = debug
 
     def predict(self, X):
         Y = numpy.zeros((X.shape[0],))
@@ -197,3 +208,49 @@ class NeuralNetwork_Dumpable(object):
                 g_b_debug[j, i] = (Hl - Hr) / 0.002
                 self.layers[k - 1].b[i, j] += 0.001
         self.forward_propagation(self._H[0])
+
+    def visualize(self, epoch):
+        # fix the absolute path of file
+        full_path = os.path.realpath(__file__)
+        path, _ = os.path.split(full_path)
+        time = strftime("%y%m%d%H%M%S", gmtime())
+        filename = time + '-weights.png'
+        figure_path = os.path.join(path, '../output/visualize', filename)
+
+        ncol = 10
+        nrow = int(self.layers[0].w.shape[1] / ncol)
+
+        fig = plt.figure()
+        plt.axis('off')
+        for i in range(self.layers[0].w.shape[1]):
+            ax = plt.subplot(nrow, ncol, i+1)
+            im = ax.imshow(self.layers[0].w[:, i].reshape([28, 28]))
+            ax.axis('off')
+        plt.savefig(os.path.join(path, figure_path))
+        return
+
+    def plot(self):
+        full_path = os.path.realpath(__file__)
+        path, _ = os.path.split(full_path)
+        time = strftime("%y%m%d%H%M%S", gmtime())
+        filename = time + '-loss.png'
+        titletext = f'lr={self._learning_rate},l2={self._regularizer},m={self._momentum},b={self.batch_size}'
+
+        plt.figure()
+        line_1, = plt.plot(self.train_loss, label='train loss')
+        line_2, = plt.plot(self.valid_loss, label='valid loss')
+        plt.legend(handles=[line_1, line_2])
+        plt.xlabel('epoch')
+        plt.ylabel('cross-entropy loss')
+        plt.title(titletext)
+        plt.savefig(os.path.join(path, '../output/plot-loss', filename))
+
+        plt.figure()
+        line_1, = plt.plot(self.train_error, label='train error')
+        line_2, = plt.plot(self.valid_error, label='valid error')
+        plt.legend(handles=[line_1, line_2])
+        plt.xlabel('epoch')
+        plt.ylabel('error rate')
+        plt.title(titletext)
+        plt.savefig(os.path.join(path, '../output/plot-error', filename))
+        return

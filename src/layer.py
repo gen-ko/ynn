@@ -1,6 +1,9 @@
 import numpy
 import math
 from src import ytensor
+import warnings
+
+warnings.filterwarnings('error')
 
 
 class Layer(object):
@@ -25,33 +28,33 @@ class Linear(Layer):
         self.w = numpy.random.uniform(low=-b, high=b, size=(input_dimension, output_dimension))
         self.b = numpy.zeros((output_dimension, 1), dtype=numpy.float64)
         self.delta_w = numpy.zeros(shape=self.w.shape, dtype=numpy.float64)
-        self._delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float64)
+        self.delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float64)
         self.g_w = numpy.zeros(self.w.shape)
         self.g_b = numpy.zeros(self.b.shape)
 
     def forward(self, x):
         tmp = numpy.dot(self.w.T, x)
-        for i in range(tmp.shape[1]):
-            tmp[:, i] += self.b[:, 0]
+        # tmp shape (D, N), b shape (D, 1)
+        tmp += self.b
         return tmp
 
     def backward(self, g_a, h_out, h_in):
-        self.g_w = numpy.zeros(self.w.shape)
         for i in range(g_a.shape[1]):
             self.g_w += numpy.outer(h_in[:, i], g_a[:, i])
             self.g_b += g_a[:, i].reshape(self.b.shape)
-        self.g_w /= self.g_w.shape[1]
-        self.g_b /= self.g_b.shape[1]
+        self.g_w /= g_a.shape[1]
+        self.g_b /= g_a.shape[1]
         g_h_in = numpy.dot(self.w, g_a)
         return g_h_in
 
     def update(self, learning_rate, regular, momentum):
-        self.delta_w = self.g_w + momentum * self.delta_w
-        delta = -self.delta_w - regular * 2.0 * self.w
-        self.w += learning_rate * delta
-        self._delta_b = self.g_b + momentum * self._delta_b
-        delta = -self._delta_b
-        self.b += learning_rate * delta
+        tmp = self.g_w + regular * 2.0 * self.w
+        self.delta_w = -learning_rate * tmp + momentum * self.delta_w
+        self.w += self.delta_w
+
+        tmp = self.g_b
+        self.delta_b = -learning_rate * tmp + momentum * self.delta_b
+        self.b += self.delta_b
         self.g_w = numpy.zeros(self.w.shape)
         self.g_b = numpy.zeros(self.b.shape)
 
@@ -77,21 +80,47 @@ class Nonlinear(Layer):
     def update(self, learning_rate, regular, momentum):
         return
 
+
 class Sigmoid(Nonlinear):
-    def activation(self, x):
-        x = numpy.clip(x, -500.0, 500.0)
-        tmp = numpy.zeros(x.shape)
-        for i in range(x.shape[0]):
-            for j in range(x.shape[1]):
-                tmp[i, j] = 1.0 / (1.0 + math.exp(-x[i, j]))
+    def activation(self, x: numpy.ndarray):
+        tmp = numpy.clip(x, -500.0, 500.0)
+        tmp = numpy.exp(-tmp) + 1
+        tmp = numpy.reciprocal(tmp)
         return tmp
 
-    def derivative(self, h):
-        tmp = numpy.zeros(h.shape)
-        for i in range(h.shape[0]):
-            for j in range(h.shape[1]):
-                tmp[i, j] = h[i, j] * (1 - h[i, j])
+    def derivative(self, h_out: numpy.ndarray):
+        tmp = 1.0 - h_out
+        tmp = numpy.multiply(tmp , h_out)
         return tmp
+
+
+class ReLU(Nonlinear):
+    def activation(self, x: numpy.ndarray):
+        tmp = numpy.maximum(0.0, x)
+        return tmp
+
+    def derivative(self, h_out: numpy.ndarray):
+        tmp = h_out > 0
+        tmp = tmp.astype(numpy.float64)
+        return tmp
+
+
+class Softmax(Layer):
+    def forward(self, x):
+        tmp = numpy.zeros(x.shape)
+        for i in range(tmp.shape[1]):
+            tmp[:, i] = numpy.exp(x[:, i])
+            tmp[:, i] = tmp[:, i] / numpy.sum(tmp[:, i])
+        return tmp
+
+    def backward(self, y, h_out, h_in):
+        g_a = numpy.array(h_out)
+        for i in range(g_a.shape[1]):
+            g_a[y[i], i] -= 1.0
+        return g_a
+
+    def update(self, learning_rate, regular, momentum):
+        return
 
 
 class FullConnectLayer(Layer):
@@ -103,7 +132,7 @@ class FullConnectLayer(Layer):
         self.w = numpy.random.uniform(low=-b, high=b, size=(input_dimension, output_dimension))
         self.b = numpy.zeros((output_dimension, 1), dtype=numpy.float64)
         self.delta_w = numpy.zeros(shape=self.w.shape, dtype=numpy.float64)
-        self._delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float64)
+        self.delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float64)
         self.g_w = numpy.zeros(self.w.shape)
         self.g_b = numpy.zeros(self.b.shape)
 
@@ -135,12 +164,13 @@ class FullConnectLayer(Layer):
         return g_h_in
 
     def update(self, learning_rate, regular, momentum):
-        self.delta_w = self.g_w + momentum * self.delta_w
-        delta = -self.delta_w - regular * 2.0 * self.w
-        self.w += learning_rate * delta
-        self._delta_b = self.g_b + momentum * self._delta_b
-        delta = -self._delta_b
-        self.b += learning_rate * delta
+        tmp = self.g_w + regular * 2.0 * self.w
+        self.delta_w = -learning_rate * tmp + momentum * self.delta_w
+        self.w += self.delta_w
+
+        tmp = self.g_b
+        self.delta_b = -learning_rate * tmp + momentum * self.delta_b
+        self.b += self.delta_b
         self.g_w = numpy.zeros(self.w.shape)
         self.g_b = numpy.zeros(self.b.shape)
 
@@ -166,27 +196,6 @@ class SigmoidLayer(FullConnectLayer):
                 tmp[i, j] = h[i, j] * (1 - h[i, j])
         return tmp
 
-# TODO
-# TODO class ReLULayer(FullConnectLayer):
-        # TODO    def __init__(self, input_dimension, output_dimension):
-    # TODO        FullConnectLayer.__init__(self, input_dimension, output_dimension)
-    # TODO
-        # TODO   def activation(self, x):
-    # TODO        return numpy.array([max(xi, 0) for xi in x]).reshape(x.shape)
-
-        # TODO   def derivative(self, h):
-    # TODO      return numpy.array([max(numpy.sign(hi), 0) for hi in h])
-
-
-    # TODO class TanhLayer(FullConnectLayer):
-        # TODO  def __init__(self, input_dimension, output_dimension):
-    # TODO       FullConnectLayer.__init__(self, input_dimension, output_dimension)
-    # TODO
-        # TODO    def activation(self, x):
-    # TODO       return numpy.tanh(x).reshape(x.shape)
-
-        # TODO   def derivative(self, h):
-    # TODO      return numpy.array([1.0 - hi**2 for hi in h])
 
 
 class SoftmaxLayer(FullConnectLayer):
@@ -207,111 +216,73 @@ class SoftmaxLayer(FullConnectLayer):
         g_a = numpy.array(h_out)
         for i in range(g_a.shape[1]):
             g_a[y[i], i] -= 1.0
-
-        self.g_w = numpy.zeros(self.w.shape)
         for i in range(g_a.shape[1]):
             tmp = numpy.outer(h_in[:, i], g_a[:, i])
             self.g_w += tmp
             self.g_b += g_a[:, i].reshape(self.b.shape)
-        self.g_w /= self.g_w.shape[1]
-        self.g_b /= self.g_b.shape[1]
+        self.g_w /= y.size
+        self.g_b /= y.size
         g_h_in = numpy.dot(self.w, g_a)
         return g_h_in
 
-class BatchNormalize(Layer):
+class BN(Layer):
     def __init__(self, in_dim, out_dim):
         Layer.__init__(self, in_dim, out_dim)
-
+        self.eps = 1e-5
         b = math.sqrt(6.0) / math.sqrt(in_dim + out_dim + 0.0)
-        self.gamma = numpy.random.uniform(low=-b, high=b)
+        self.gamma = 1.0
         self.beta = 0.0
         self.delta_gamma = 0.0
-        self._delta_beta = 0.0
-        self.g_gamma = 0.0
-        self.g_beta = 0.0
-        self.xhat = 0.0
-        self.xmu = 0.0
+        self.delta_b = 0.0
+        self.g_g = 0.0
+        self.g_b = 0.0
+
+        self.x_hat : numpy.ndarray
         self.ivar = 0.0
-        self.sqrtvar = 0.0
-        self.var = 0.0
-        self.eps = 0.0
-        self.dx = 0.0
-        self.dgamma = 0.0
-        self.dbeta = 0.0
+
 
     def forward(self, x):
         D, N = x.shape
-        self.eps = 10.0**(-8)
-
-        # step1: calculate mean
-        mu = numpy.mean(x, axis=1)
-
-        # step2: subtract mean vector of every trainings example
-        self.xmu = (x.T - mu).T
-
-        # step3: following the lower branch - calculation denominator
-        sq = numpy.power(self.xmu, 2)
-
-        # step4: calculate variance
-        self.var = 1. / N * numpy.sum(sq, axis=1)
-
-        # step5: add eps for numerical stability, then sqrt
-        self.sqrtvar = numpy.sqrt(self.var + self.eps)
-
-        # step6: invert sqrtwar
-        self.ivar = 1. / self.sqrtvar
-
-        # step7: execute normalization
-        self.xhat = (self.xmu.T * self.ivar).T
-
-        # step8: Nor the two transformation steps
-        gammax = (self.gamma * self.xhat.T).T
-
-        # step9
-        out = (gammax.T + self.beta).T
-
-        return out
+        tmp_x = x.T
+        mu = numpy.mean(tmp_x, axis=0)
+        xmu = tmp_x - mu
+        sq = xmu ** 2
+        var = 1. / N * numpy.sum(sq, axis=0)
+        sqrtvar = numpy.sqrt(var + self.eps)
+        self.ivar = 1. / sqrtvar
+        self.x_hat = xmu * self.ivar
+        tmp = self.gamma * self.x_hat
+        out = tmp + self.beta
+        return out.T
 
     def backward(self, g_h, h_out, h_in):
 
         # get the dimensions of the input/output
-        D, N = h_out.shape
+        D, N = g_h.shape
+        dout = g_h.T
+        x_hat = self.x_hat
+        inv_var = self.ivar
 
-        # step9
-        self.dbeta = numpy.sum(h_out, axis=1)
-        dgammax = h_out  # not necessary, but more understandable
 
-        # step8
-        self.dgamma = numpy.sum(dgammax * self.xhat, axis=1)
-        dxhat = (dgammax.T * self.gamma).T
+        dxhat = dout * self.gamma
+        tmp1 = (1. / N) * self.ivar
+        tmp2 = (N * dxhat - numpy.sum(dxhat, axis=0))
+        tmp3 = (x_hat * numpy.sum(dxhat * x_hat, axis=0))
+        dx = tmp1 * (tmp2 - tmp3)
+        self.g_b = numpy.sum(dout, axis=0)
+        self.g_g = numpy.sum(numpy.multiply(x_hat, dout), axis=0)
 
-        # step7
-        divar = numpy.sum(dxhat * self.xmu, axis=1)
-        dxmu1 = (dxhat.T * self.ivar).T
+        return dx.T
 
-        # step6
-        dsqrtvar = -1. / (self.sqrtvar ** 2) * divar
 
-        # step5
-        dvar = 0.5 * 1. / numpy.sqrt(self.var + self.eps) * dsqrtvar
-
-        # step4
-        dsq = ((1. / N * numpy.ones((D, N))).T * dvar).T
-
-        # step3
-        dxmu2 = 2 * self.xmu * dsq
-
-        # step2
-        dx1 = (dxmu1 + dxmu2)
-        dmu = -1 * numpy.sum(dxmu1 + dxmu2, axis=1)
-
-        # step1
-        dx2 = (1. / N * numpy.ones((N, D)) * dmu).T
-
-        # step0
-        self.dx = dx1 + dx2
-        return self.dx
 
     def update(self, learning_rate, regular, momentum):
-        self.gamma += -learning_rate * self.dgamma
-        self.beta += -learning_rate * self.dbeta
+        tmp = self.g_g + regular * 2.0 * self.gamma
+        self.delta_gamma = -learning_rate * tmp + momentum * self.delta_gamma
+        self.gamma += self.delta_gamma
+
+        tmp = self.g_b
+        self.delta_b = -learning_rate * tmp + momentum * self.delta_b
+        self.beta += self.delta_b
+        self.g_g = 0.0
+        self.g_b = 0.0

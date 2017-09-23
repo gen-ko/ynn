@@ -45,16 +45,16 @@ plt.show()
 '''
 #l1 = Layer(784, 100, 10)
 print("start initiliazing...")
-network.init_nn(random_seed=20791)
-
-random_state = numpy.random.RandomState(seed=2056791)
+network.init_nn(random_seed=1099)
 
 
-layers = [layer.SigmoidLayer(784, 100),
+layers = [layer.Linear(784, 500),
+          layer.Sigmoid(500, 500),
+          layer.Linear(500, 500),
+          layer.Sigmoid(500, 500),
           layer.SoftmaxLayer(100, 10)]
 
-myNN = NN(layers, learning_rate=0.01, debug=False, momentum=0.9, regularizer=0.0001)
+myNN = NN(layers, learning_rate=0.01, debug=False, momentum=0.5, regularizer=0.0001)
 
-myNN.train_dump(x_train, y_train, x_valid, y_valid, epoch=300,
-                dump_file=os.path.join(path, '../temp', 'network1-1.dump'))
+myNN.train(x_train, y_train, x_valid, y_valid, epoch=300)
 print("hi")

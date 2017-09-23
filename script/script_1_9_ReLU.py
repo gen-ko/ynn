@@ -28,7 +28,7 @@ data_test_filepath = os.path.join(path, data_filepath, data_test_filename)
 print('start initializing...')
 network.init_nn(random_seed=1099)
 
-learning_rates = [0.01]
+learning_rates = [0.0001]
 momentums = [0.9]
 
 regularizers = [0.00001]
@@ -39,9 +39,8 @@ for i2 in range(len(regularizers)):
     for i3 in range(len(momentums)):
         for i4 in range(len(learning_rates)):
             layers = [layer.Linear(784, 100),
-                      layer.Sigmoid(100, 100),
-                      layer.Linear(100, 100),
-                      layer.Sigmoid(100, 100),
+                      layer.BN(100, 100),
+                      layer.ReLU(100, 100),
                       layer.SoftmaxLayer(100, 10)]
             name = 'network2' + '-' + str(i2) + '-' + str(i3) + '-' + str(i4) + '.dump'
             myNN = NN(layers, learning_rate=learning_rates[i4], regularizer=regularizers[i2], momentum=momentums[i3])

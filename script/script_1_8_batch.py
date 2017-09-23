@@ -26,12 +26,12 @@ data_valid_filepath = os.path.join(path, data_filepath, data_valid_filename)
 data_test_filepath = os.path.join(path, data_filepath, data_test_filename)
 
 print('start initializing...')
-network.init_nn(random_seed=20791)
+network.init_nn(random_seed=1099)
 
-learning_rates = [0.02]
+learning_rates = [0.01]
 momentums = [0.9]
 
-regularizers = [0.0001]
+regularizers = [0.00001]
 x_train, y_train = load_data.load_from_path(data_train_filepath)
 x_valid, y_valid = load_data.load_from_path(data_valid_filepath)
 
@@ -39,13 +39,11 @@ for i2 in range(len(regularizers)):
     for i3 in range(len(momentums)):
         for i4 in range(len(learning_rates)):
             layers = [layer.Linear(784, 100),
-                      layer.BatchNormalize(100, 100),
+                      layer.BN(100, 100),
                       layer.Sigmoid(100, 100),
                       layer.Linear(100, 100),
-                      layer.BatchNormalize(100, 100),
                       layer.Sigmoid(100, 100),
                       layer.SoftmaxLayer(100, 10)]
             name = 'network2' + '-' + str(i2) + '-' + str(i3) + '-' + str(i4) + '.dump'
             myNN = NN(layers, learning_rate=learning_rates[i4], regularizer=regularizers[i2], momentum=momentums[i3])
-            myNN.train(x_train, y_train, x_valid, y_valid, epoch=300,
-                            dump_file=os.path.join(path, '../temp', name), batch_size=128)
+            myNN.train(x_train, y_train, x_valid, y_valid, epoch=300, batch_size=32)
