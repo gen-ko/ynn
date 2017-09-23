@@ -222,6 +222,7 @@ class NeuralNetwork_Dumpable(object):
 
         fig = plt.figure()
         plt.axis('off')
+        plt.subplots_adjust(wspace=0.01, hspace=0.01)
         for i in range(self.layers[0].w.shape[1]):
             ax = plt.subplot(nrow, ncol, i+1)
             im = ax.imshow(self.layers[0].w[:, i].reshape([28, 28]))

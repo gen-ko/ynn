@@ -105,6 +105,17 @@ class ReLU(Nonlinear):
         return tmp
 
 
+class Tanh(Nonlinear):
+    def activation(self, x: numpy.ndarray):
+        tmp = numpy.tanh(x)
+        return tmp
+
+    def derivative(self, h_out: numpy.ndarray):
+        tmp = numpy.power(h_out, 2)
+        tmp = 1 - tmp
+        return tmp
+
+
 class Softmax(Layer):
     def forward(self, x):
         tmp = numpy.zeros(x.shape)

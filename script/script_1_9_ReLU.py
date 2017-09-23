@@ -28,20 +28,15 @@ data_test_filepath = os.path.join(path, data_filepath, data_test_filename)
 print('start initializing...')
 network.init_nn(random_seed=1099)
 
-learning_rates = [0.0001]
-momentums = [0.9]
 
-regularizers = [0.00001]
 x_train, y_train = load_data.load_from_path(data_train_filepath)
 x_valid, y_valid = load_data.load_from_path(data_valid_filepath)
 
-for i2 in range(len(regularizers)):
-    for i3 in range(len(momentums)):
-        for i4 in range(len(learning_rates)):
-            layers = [layer.Linear(784, 100),
-                      layer.BN(100, 100),
-                      layer.ReLU(100, 100),
-                      layer.SoftmaxLayer(100, 10)]
-            name = 'network2' + '-' + str(i2) + '-' + str(i3) + '-' + str(i4) + '.dump'
-            myNN = NN(layers, learning_rate=learning_rates[i4], regularizer=regularizers[i2], momentum=momentums[i3])
-            myNN.train(x_train, y_train, x_valid, y_valid, epoch=300, batch_size=32)
+
+layers = [layer.Linear(784, 100),
+          layer.ReLU(100, 100),
+          layer.Linear(100, 100),
+          layer.Softmax(10, 10)]
+
+myNN = NN(layers, learning_rate=0.1, regularizer=0.0001, momentum=0.9)
+myNN.train(x_train, y_train, x_valid, y_valid, epoch=300, batch_size=32)

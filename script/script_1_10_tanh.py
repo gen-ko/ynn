@@ -25,36 +25,18 @@ data_train_filepath = os.path.join(path, data_filepath, data_train_filename)
 data_valid_filepath = os.path.join(path, data_filepath, data_valid_filename)
 data_test_filepath = os.path.join(path, data_filepath, data_test_filename)
 
-
-# x range [0, 1]
-x_train, y_train = load_data.load_from_path(data_train_filepath)
-x_valid, y_valid = load_data.load_from_path(data_valid_filepath)
-
-# warm-up phase
-'''
-print(x_train.shape)
-print(y_train.shape)
-print(y_train)
-
-x_train_reshaped = plot_data.reshape_row_major(x_train[2550], 28, 28)
-# plt.imshow(x_train_reshaped)
-
-# so data is row majored
-plot_data.plot_image(x_train_reshaped)
-plt.show()
-'''
-#l1 = Layer(784, 100, 10)
-print("start initiliazing...")
+print('start initializing...')
 network.init_nn(random_seed=1099)
 
 
-layers = [layer.Linear(784, 500),
-          layer.Sigmoid(500, 500),
-          layer.Linear(500, 500),
-          layer.Sigmoid(500, 500),
-          layer.SoftmaxLayer(100, 10)]
+x_train, y_train = load_data.load_from_path(data_train_filepath)
+x_valid, y_valid = load_data.load_from_path(data_valid_filepath)
 
-myNN = NN(layers, learning_rate=0.01, debug=False, momentum=0.5, regularizer=0.0001)
 
-myNN.train(x_train, y_train, x_valid, y_valid, epoch=300)
-print("hi")
+layers = [layer.Linear(784, 100),
+          layer.Tanh(100, 100),
+          layer.Linear(100, 100),
+          layer.Softmax(10, 10)]
+
+myNN = NN(layers, learning_rate=0.1, regularizer=0.0001, momentum=0.9)
+myNN.train(x_train, y_train, x_valid, y_valid, epoch=300, batch_size=32)

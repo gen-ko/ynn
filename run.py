@@ -1,1 +1,1 @@
-import script.script_assignment_1
+import script.script_1_1_naive
