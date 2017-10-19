@@ -14,10 +14,10 @@ class Layer(object):
     def forward(self, x):
         raise ValueError('Calling a virtual function')
 
-    def backward(self, g_a, h_out, h_in):
+    def backward(self, *args):
         raise ValueError('Calling a virtual function')
 
-    def update(self, learning_rate, regular, momentum):
+    def update(self, *args):
         raise ValueError('Calling a virtual function')
 
 
@@ -57,6 +57,111 @@ class Linear(Layer):
         self.b += self.delta_b
         self.g_w = numpy.zeros(self.w.shape)
         self.g_b = numpy.zeros(self.b.shape)
+
+
+class RBM(Layer):
+    def __init__(self, input_dimension, output_dimension):
+        Layer.__init__(self, input_dimension, output_dimension)
+        b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
+        self.w = numpy.random.uniform(low=-b, high=b, size=(output_dimension, input_dimension))
+        self.h_bias = numpy.zeros(shape=(output_dimension, 1), dtype=numpy.float64)
+        self.x_bias = numpy.zeros(shape=(input_dimension, 1), dtype=numpy.float64)
+
+    def forward(self, x):
+        tmp = numpy.dot(self.w, x)
+        tmp += self.h_bias
+
+        tmp = numpy.clip(tmp, -500.0, 500.0)
+        tmp = numpy.exp(-tmp) + 1
+        tmp = numpy.reciprocal(tmp)
+        return tmp
+
+    def sample_h_given_x(self, x):
+        h_mean = self.forward(x)
+        h_sample = numpy.random.binomial(n=1, p=h_mean, size=h_mean.shape)
+        return h_sample
+
+    def sample_x_given_h(self, h):
+        x_mean = self.backward(h)
+        x_sample = numpy.random.binomial(n=1, p=x_mean, size=x_mean.shape)
+        return x_sample
+
+    def gibbs_xhx(self, x):
+        h_sample = self.sample_h_given_x(x)
+        x_sample = self.sample_x_given_h(h_sample)
+        return x_sample
+
+    def gibbs_hxh(self, h):
+        x_sample = self.sample_x_given_h(h)
+        h_sample = self.sample_h_given_x(x_sample)
+        return h_sample
+
+    def backward(self, h):
+        tmp = numpy.dot(self.w.T, h)
+        tmp += self.x_bias
+
+        tmp = numpy.clip(tmp, -500.0, 500.0)
+        tmp = numpy.exp(-tmp) + 1
+        tmp = numpy.reciprocal(tmp)
+        return tmp
+
+    def update(self, delta_w, delta_h_bias, delta_x_bias, learning_rate):
+        self.w += learning_rate * delta_w
+        self.h_bias += learning_rate * delta_h_bias
+        self.x_bias += learning_rate * delta_x_bias
+
+
+class AutoEncoder(Layer):
+    def __init__(self, input_dimension, output_dimension):
+        Layer.__init__(self, input_dimension, output_dimension)
+        #b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
+        #self.w = numpy.random.uniform(low=-b, high=b, size=(output_dimension, input_dimension))
+        self.w = numpy.random.normal(0, 0.1, (output_dimension, input_dimension))
+        self.h_bias = numpy.zeros(shape=(output_dimension, 1), dtype=numpy.float64)
+        self.x_bias = numpy.zeros(shape=(input_dimension, 1), dtype=numpy.float64)
+
+    def forward(self, x):
+        tmp = numpy.dot(self.w, x)
+        tmp += self.h_bias
+
+        tmp = numpy.clip(tmp, -500.0, 500.0)
+        tmp = numpy.exp(-tmp) + 1
+        tmp = numpy.reciprocal(tmp)
+        return tmp
+
+    def backward(self, h):
+        tmp = numpy.dot(self.w.T, h)
+        tmp += self.x_bias
+
+        tmp = numpy.clip(tmp, -500.0, 500.0)
+        tmp = numpy.exp(-tmp) + 1
+        tmp = numpy.reciprocal(tmp)
+        return tmp
+
+    def update(self, delta_w, delta_h_bias, delta_x_bias, learning_rate):
+        self.w += learning_rate * delta_w
+        self.h_bias += learning_rate * delta_h_bias
+        self.x_bias += learning_rate * delta_x_bias
+
+
+class Dropout(Layer):
+    def __init__(self, input_dimension, output_dimension, drop_rate=0.1):
+        Layer.__init__(self, input_dimension, output_dimension)
+        assert input_dimension == output_dimension, 'input and output dimension is not equal'
+        self.drop_rate = drop_rate
+
+    def forward(self, x):
+        y = numpy.array(x)
+        for i in range(x.shape[0]):
+            for j in range(x.shape[1]):
+                if numpy.random.uniform(0, 1, ) < self.drop_rate:
+                    y[i, j] = 0
+        return y
+
+    def backward(self, *args):
+        return args
+
+
 
 
 class Nonlinear(Layer):

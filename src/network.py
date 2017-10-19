@@ -220,7 +220,7 @@ class NeuralNetwork_Dumpable(object):
         ncol = 10
         nrow = int(self.layers[0].w.shape[1] / ncol)
 
-        fig = plt.figure()
+        fig = plt.figure(2)
         plt.axis('off')
         plt.subplots_adjust(wspace=0.01, hspace=0.01)
         for i in range(self.layers[0].w.shape[1]):
@@ -228,6 +228,7 @@ class NeuralNetwork_Dumpable(object):
             im = ax.imshow(self.layers[0].w[:, i].reshape([28, 28]))
             ax.axis('off')
         plt.savefig(os.path.join(path, figure_path))
+        plt.close(2)
         return
 
     def plot(self):
@@ -237,7 +238,7 @@ class NeuralNetwork_Dumpable(object):
         filename = time + '-loss.png'
         titletext = f'lr={self._learning_rate},l2={self._regularizer},m={self._momentum},b={self.batch_size}'
 
-        plt.figure()
+        plt.figure(1)
         line_1, = plt.plot(self.train_loss, label='train loss')
         line_2, = plt.plot(self.valid_loss, label='valid loss')
         plt.legend(handles=[line_1, line_2])
@@ -246,7 +247,7 @@ class NeuralNetwork_Dumpable(object):
         plt.title(titletext)
         plt.savefig(os.path.join(path, '../output/plot-loss', filename))
 
-        plt.figure()
+        plt.figure(3)
         line_1, = plt.plot(self.train_error, label='train error')
         line_2, = plt.plot(self.valid_error, label='valid error')
         plt.legend(handles=[line_1, line_2])
@@ -254,4 +255,6 @@ class NeuralNetwork_Dumpable(object):
         plt.ylabel('error rate')
         plt.title(titletext)
         plt.savefig(os.path.join(path, '../output/plot-error', filename))
+        plt.close(1)
+        plt.close(3)
         return
