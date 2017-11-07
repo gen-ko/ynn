@@ -71,9 +71,10 @@ class RBM(Layer):
         tmp = numpy.dot(self.w, x)
         tmp += self.h_bias
 
-        tmp = numpy.clip(tmp, -500.0, 500.0)
-        tmp = numpy.exp(-tmp) + 1
-        tmp = numpy.reciprocal(tmp)
+        #tmp = numpy.clip(tmp, -500.0, 500.0)
+        #tmp = numpy.exp(-tmp) + 1
+        #tmp = numpy.reciprocal(tmp)
+        tmp = ytensor.sigmoid(tmp)
         return tmp
 
     def sample_h_given_x(self, x):
@@ -100,9 +101,10 @@ class RBM(Layer):
         tmp = numpy.dot(self.w.T, h)
         tmp += self.x_bias
 
-        tmp = numpy.clip(tmp, -500.0, 500.0)
-        tmp = numpy.exp(-tmp) + 1
-        tmp = numpy.reciprocal(tmp)
+        #tmp = numpy.clip(tmp, -500.0, 500.0)
+        #tmp = numpy.exp(-tmp) + 1
+        #tmp = numpy.reciprocal(tmp)
+        tmp = ytensor.sigmoid(tmp)
         return tmp
 
     def update(self, delta_w, delta_h_bias, delta_x_bias, learning_rate):

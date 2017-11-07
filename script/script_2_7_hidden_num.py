@@ -3,7 +3,6 @@
 import os
 import sys
 import src.load_data as load_data
-from src import plot_data
 from src import layer
 import src.rbm as rbm
 import src.autoencoder as autoencoder

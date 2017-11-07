@@ -3,7 +3,6 @@
 import os
 import sys
 import src.load_data as load_data
-from src import plot_data
 from src import layer
 import src.rbm as rbm
 import matplotlib.pyplot as plt
@@ -34,5 +33,5 @@ x_valid, y_valid = load_data.load_from_path(data_valid_filepath)
 
 myRBM = rbm.RBM(28*28, hidden_units=100)
 myRBM.set_visualize(28,28)
-myRBM.set_autostop(window=100, stride=20)
+myRBM.set_autostop(window=40, stride=20)
 myRBM.train(x_train, x_valid, k=1, epoch=3000, learning_rate=0.1, batch_size=128, plotfile='script-2-1-naive')

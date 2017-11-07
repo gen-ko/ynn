@@ -36,25 +36,33 @@ class RBM(object):
             h_neg_sample = self.sample_h(h_neg_prob)
         return [x_neg_prob, x_neg_sample, h_t_prob, h_neg_prob, h_neg_sample]
 
-    def sample_h(self, h_p):
+    def reconstruct(self, x_t_sample):
+        # x shape (sample_dimension, 1)
+        h_t_prob = self.layer.forward(x_t_sample)
+        x_reconstruct = self.layer.backward(h_t_prob)
+        return x_reconstruct
+
+    @staticmethod
+    def sample_h(h_p):
         h_sample = numpy.random.binomial(n=1, p=h_p, size=h_p.shape)
         return h_sample
 
-    def sample_x(self, x_p):
+    @staticmethod
+    def sample_x(x_p):
         x_sample = numpy.random.binomial(n=1, p=x_p, size=x_p.shape)
         return x_sample
 
-    def update(self, x_t, x_neg, h_t_prob, h_neg_prob):
+    def update(self, x_t, x_neg_prob, h_t_prob, h_neg_prob):
         delta_w = numpy.zeros(shape=self.layer.w.shape, dtype=numpy.float64)
         delta_h_bias = numpy.zeros(shape=self.layer.h_bias.shape)
         delta_x_bias = numpy.zeros(shape=self.layer.x_bias.shape)
         batch_size = x_t.shape[1]
         for i in range(0, batch_size, 1):
-            delta_w += numpy.outer(h_t_prob[:, i], x_t[:, i]) - numpy.outer(h_neg_prob[:, i], x_neg[:, i])
+            delta_w += numpy.outer(h_t_prob[:, i], x_t[:, i]) - numpy.outer(h_neg_prob[:, i], x_neg_prob[:, i])
             tmp1 = h_t_prob[:, i]
             tmp2 = h_neg_prob[:, i]
             delta_h_bias += (tmp1 - tmp2).reshape(delta_h_bias.shape[0], delta_h_bias.shape[1])
-            delta_x_bias += (x_t[:, i] - x_neg[:, i]).reshape(delta_x_bias.shape)
+            delta_x_bias += (x_t[:, i] - x_neg_prob[:, i]).reshape(delta_x_bias.shape)
 
         delta_w /= batch_size
         delta_h_bias /= batch_size
@@ -108,6 +116,7 @@ class RBM(object):
         self.plot_loss_train = numpy.zeros((epoch, ), dtype=numpy.float64)
         self.plot_loss_valid = numpy.zeros((epoch, ), dtype=numpy.float64)
         self.k = k
+
         for j in range(epoch):
             x_train = self.shuffle(x_train)
             loss_train = 0.0
@@ -118,14 +127,14 @@ class RBM(object):
                 x_batch = x_batch.T
                 x_t_sample = x_batch
                 x_neg_prob, x_neg_sample, h_t_prob, h_neg_prob, h_neg_sample = self.gibbs_sampling(x_t_sample=x_t_sample)
-                loss_train += self.cross_entropy_loss(x_t_sample, x_neg_prob, False)
+                x_reconstruct = self.reconstruct(x_t_sample)
+                loss_train += self.cross_entropy_loss(x_t_sample, x_reconstruct, False)
                 self.update(x_t_sample, x_neg_sample, h_t_prob, h_neg_prob)
             x_valid_sample = x_valid.T
-            x_valid_neg_prob, _, _, _, _ = self.gibbs_sampling(x_t_sample=x_valid_sample)
+            x_valid_neg_prob = self.reconstruct(x_valid_sample)
             loss_train /= x_train.shape[0]
             loss_valid = self.cross_entropy_loss(x_valid_sample, x_valid_neg_prob, False)
             loss_valid /= x_valid.shape[0]
-
             print('\t', j, '\t', sep='', end=' ')
             print('\t|\t ', "{0:.5f}".format(loss_train),
                   '  \t|\t ', "{0:.5f}".format(loss_valid),
@@ -148,6 +157,7 @@ class RBM(object):
                         self.autostop(current_epoch=j, plotfile=plotfile)
                         print('---- Earling stopping now ----')
                         return
+        self.autostop(current_epoch=3000, plotfile=plotfile)
         return
 
     def autostop(self, current_epoch, plotfile):
