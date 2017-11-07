@@ -12,3 +12,11 @@ def load_from_path(data_filepath):
     return x, y
 
 
+class DataStore(object):
+    def __init__(self):
+        self.hasData = False
+        self.dataNum = 0
+        self.dataDim = 0
+        self.dataPath: str = ''
+
+    # def feed_data(self, path: str):: TODO
