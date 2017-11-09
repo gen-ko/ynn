@@ -223,7 +223,7 @@ def process_four_gram(four_gram):
 X_train = process_four_gram(four_gram_train)
 X_valid = process_four_gram(four_gram_valid)
 
-# dump the one-hot representation of input :: TODO
+# dump the one-hot representation of input
 with open(data_train_dump_filepath, 'wb+') as f:
     pickle.dump(X_train, f)
 with open(data_valid_dump_filepath, 'wb+') as f:

@@ -2,6 +2,7 @@ import numpy
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import os
+from src import util as uf
 
 def reshape_row_major(x, num_row, num_column):
     # type: (numpy.ndarray, int, int) -> numpy.ndarray
@@ -44,6 +45,75 @@ class PlotterLoss(PlotterBase):
         plt.savefig(self.savepath)
         plt.close(1)
         return
+
+def plot_base(v1, v2, label, save_path):
+    plt.figure(1)
+    label_1 = 'train' + ' ' + label
+    label_2 = 'valid' + ' ' + label
+    line_1, = plt.plot(v1, label=label_1)
+    line_2, = plt.plot(v2, label=label_2)
+    plt.legend(handles=[line_1, line_2])
+    plt.xlabel('epoch')
+    plt.ylabel(label)
+    #plt.title(self.titletext)
+    plt.savefig(save_path)
+    plt.close(1)
+    return
+
+
+def plot_perplexity(status_train: uf.Status, status_valid: uf.Status):
+    try:
+        plot_file = status_train.train_settings.filename
+    except ValueError:
+        plot_file = 'loss'
+    try:
+        filename_prefix = status_train.train_settings.filename_prefix
+    except AttributeError:
+        filename_prefix = 'prefix'
+    try:
+        filename_suffix = status_train.train_settings.filename_suffix
+    except AttributeError:
+        filename_suffix = 'perp'
+    filename_extension = '.png'
+    filename = plot_file + '-' + filename_prefix + '-' + filename_suffix + filename_extension
+    full_path = os.path.realpath(__file__)
+    path, _ = os.path.split(full_path)
+    savepath = os.path.join(path, '../output/perplexity', filename)
+
+    v1 = status_train.perplexity[0:status_train.current_epoch+1]
+    v2 = status_valid.perplexity[0:status_valid.current_epoch+1]
+    label = 'perplexity'
+    plot_base(v1, v2, label, savepath)
+    return
+
+
+def plot_loss(status_train: uf.Status, status_valid: uf.Status):
+    try:
+        plot_file = status_train.train_settings.filename
+    except AttributeError:
+        plot_file = 'loss'
+    try:
+        filename_prefix = status_train.train_settings.filename_prefix
+    except AttributeError:
+        filename_prefix = 'prefix'
+    try:
+        filename_suffix = status_train.train_settings.filename_suffix
+    except AttributeError:
+        filename_suffix = 'loss'
+    filename_extension = '.png'
+    filename = plot_file + '-' + filename_prefix + '-' + filename_suffix + filename_extension
+    full_path = os.path.realpath(__file__)
+    path, _ = os.path.split(full_path)
+    savepath = os.path.join(path, '../output/plot-loss', filename)
+
+    v1 = status_train.loss[0:status_train.current_epoch+1]
+    v2 = status_valid.loss[0:status_valid.current_epoch+1]
+    label = 'loss'
+    plot_base(v1, v2, label, savepath)
+    return
+
+
+
 
 
 # TODO: A plloter for RBM, NN, AutoEncoder needs to be implemented

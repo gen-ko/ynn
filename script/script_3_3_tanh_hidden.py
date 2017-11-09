@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy
 import os
 import pickle
+from src import util as uf
 
 
 # resolve file path
@@ -22,6 +23,7 @@ data_train_filepath = os.path.join(path, dump_filepath, data_train_filename)
 data_valid_filepath = os.path.join(path, dump_filepath, data_valid_filename)
 
 
+
 # load preprocessed data
 with open(data_train_filepath, 'rb+') as f:
     data_train = pickle.load(f)
@@ -33,12 +35,16 @@ y_train = data_train[:, 3]
 x_valid = data_valid[:, 0:3]
 y_valid = data_valid[:, 3]
 
-
 # set the random seed
 numpy.random.seed(1099)
 
 
+
+data_store_train = uf.DataStore(x_train, y_train)
+data_store_valid = uf.DataStore(x_valid, y_valid)
+train_settings = uf.TrainSettings(learning_rate=0.1, batch_size=512, momentum=0.9, plot_callback=nlp.plot_callback,
+                                  loss_callback=nlp.loss_callback, filename='script-3-3')
+
 # build the neural network
-mynlp = nlp.NlpL3TypeA()
-mynlp.train(x_train, y_train, x_valid, y_valid, epoch=100, batch_size=512, momentum=0.9)
-print(type(x_train))
+mynlp = nlp.NlpL3TypeB()
+uf.cross_train(mynlp, data_store_train, data_store_valid, train_settings)

@@ -3,7 +3,7 @@
 import os
 import sys
 import src.load_data as load_data
-from src import plot_data
+from src import plotter
 from src import layer
 from src.network import NeuralNetwork_Dumpable as NN
 import src.network as network
@@ -49,12 +49,12 @@ network.init_nn(random_seed=1099)
 
 
 layers = [layer.Linear(784, 100),
-          layer.BN(100, 100),
-          layer.Sigmoid(100, 100),
+          #layer.BN(100, 100),
+          layer.Sigmoid(100),
           layer.Linear(100, 10),
-          layer.Softmax(10, 10)]
+          layer.Softmax(10)]
 
-myNN = NN(layers, learning_rate=0.001, momentum=0.99, regularizer=0.0001)
+myNN = NN(layers, learning_rate=0.01, momentum=0.90, regularizer=0.0001)
 
-myNN.train(x_train, y_train, x_valid, y_valid, epoch=300, batch_size=32)
+myNN.train(x_train, y_train, x_valid, y_valid, epoch=300, batch_size=64)
 print("hi")

@@ -5,11 +5,29 @@ import warnings
 
 warnings.filterwarnings('error')
 
+name_pool: dict = {}
+
 
 class Layer(object):
-    def __init__(self, input_dimension, output_dimension):
-        self._input_dimension = input_dimension
-        self._output_dimension = output_dimension
+    def __init__(self, input_dimension, output_dimension, name: str=None, prev: [str]=None):
+        self.id = name_pool.__sizeof__()
+        if name is None:
+            self.name = 'layer' + str(self.id)
+        else:
+            self.name = name
+
+        name_pool[self.name] = self
+        self.next = []
+        if prev is None:
+            self.prev = []
+        else:
+            for prev_str in prev:
+                self.prev += name_pool[prev_str]
+            for layer in self.prev:
+                layer.next += self
+
+        self.input_dimension = input_dimension
+        self.output_dimension = output_dimension
 
     def forward(self, x):
         raise ValueError('Calling a virtual function')
@@ -22,41 +40,48 @@ class Layer(object):
 
 
 class Linear(Layer):
-    def __init__(self, input_dimension, output_dimension):
-        Layer.__init__(self, input_dimension, output_dimension)
+    def __init__(self, input_dimension, output_dimension, name: str = None, prev: [str] = None):
+        Layer.__init__(self, input_dimension, output_dimension, name, prev)
         b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
-        self.w = numpy.random.uniform(low=-b, high=b, size=(input_dimension, output_dimension))
-        self.b = numpy.zeros((output_dimension, 1), dtype=numpy.float64)
-        self.delta_w = numpy.zeros(shape=self.w.shape, dtype=numpy.float64)
-        self.delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float64)
-        self.g_w = numpy.zeros(self.w.shape)
-        self.g_b = numpy.zeros(self.b.shape)
+        self.w = numpy.random.uniform(low=-b, high=b, size=(input_dimension, output_dimension)).astype(numpy.float32)
+        self.b = numpy.zeros((output_dimension, ), dtype=numpy.float32)
+        self.delta_w = numpy.zeros(shape=self.w.shape, dtype=numpy.float32)
+        self.delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float32)
+        self.d_w = numpy.zeros(self.w.shape, dtype=numpy.float32)
+        self.d_b = numpy.zeros(self.b.shape, dtype=numpy.float32)
 
     def forward(self, x):
-        tmp = numpy.dot(self.w.T, x)
-        # tmp shape (D, N), b shape (D, 1)
+        tmp = numpy.dot(x, self.w)
         tmp += self.b
         return tmp
 
-    def backward(self, g_a, h_out, h_in):
-        for i in range(g_a.shape[1]):
-            self.g_w += numpy.outer(h_in[:, i], g_a[:, i])
-            self.g_b += g_a[:, i].reshape(self.b.shape)
-        self.g_w /= g_a.shape[1]
-        self.g_b /= g_a.shape[1]
-        g_h_in = numpy.dot(self.w, g_a)
-        return g_h_in
+    def backward(self, d_a, h_out, h_in):
+        # slow, 5s
+        batch_size = d_a.shape[0]
+        self.d_w = numpy.tensordot(h_in, d_a, axes=(0, 0))
+        self.d_b = numpy.sum(d_a, axis=0)
+        #for i in range(batch_size):
+        #    self.d_w += numpy.outer(h_in[i], d_a[i])
+        #    self.d_b += d_a[i]
+        self.d_w /= batch_size
+        self.d_b /= batch_size
+        d_h_in = numpy.dot(d_a, self.w.T)
+        return d_h_in
 
-    def update(self, learning_rate, regular, momentum):
-        tmp = self.g_w + regular * 2.0 * self.w
+    def update(self, learning_rate, regular=0.0, momentum=0.0):
+        tmp = self.d_w + regular * 2.0 * self.w
         self.delta_w = -learning_rate * tmp + momentum * self.delta_w
         self.w += self.delta_w
 
-        tmp = self.g_b
+        tmp = self.d_b
         self.delta_b = -learning_rate * tmp + momentum * self.delta_b
         self.b += self.delta_b
-        self.g_w = numpy.zeros(self.w.shape)
-        self.g_b = numpy.zeros(self.b.shape)
+        self.d_w = numpy.zeros(self.w.shape)
+        self.d_b = numpy.zeros(self.b.shape)
+
+        #self.w -= self.d_w * learning_rate
+        #self.b -= self.d_b * learning_rate
+        return
 
 
 class RBM(Layer):
@@ -167,19 +192,20 @@ class Dropout(Layer):
 
 
 class Nonlinear(Layer):
+    def __init__(self, dimension, name: str = None, prev: [str] = None):
+        Layer.__init__(self, dimension, dimension, name, prev)
+        return
+
     def activation(self, a):
         raise ValueError('Calling a virtual function')
 
     def derivative(self, h):
         raise ValueError('Calling a virtual function')
 
-    def backward(self, g_h, h_out, h_in):
-        g_a = numpy.zeros(h_out.shape, dtype=numpy.float64)
+    def backward(self, d_h_out, h_out, h_in):
         deri = self.derivative(h_out)
-        for i in range(g_a.shape[0]):
-            for j in range(g_a.shape[1]):
-                g_a[i, j] = g_h[i, j] * deri[i, j]
-        return g_a
+        d_h_in = numpy.multiply(d_h_out, deri)
+        return d_h_in
 
     def forward(self, x):
         return self.activation(x)
@@ -197,7 +223,7 @@ class Sigmoid(Nonlinear):
 
     def derivative(self, h_out: numpy.ndarray):
         tmp = 1.0 - h_out
-        tmp = numpy.multiply(tmp , h_out)
+        tmp = numpy.multiply(tmp, h_out)
         return tmp
 
 
@@ -223,125 +249,30 @@ class Tanh(Nonlinear):
         return tmp
 
 
+# modified to conform to the new input layout, (batch_size, dimension)
 class Softmax(Layer):
+    def __init__(self, dimension, name: str = None, prev: [str] = None):
+        Layer.__init__(self, dimension, dimension, name, prev)
+        return
+
     def forward(self, x):
-        tmp = numpy.zeros(x.shape)
-        for i in range(tmp.shape[1]):
-            tmp[:, i] = numpy.exp(x[:, i])
-            tmp[:, i] = tmp[:, i] / numpy.sum(tmp[:, i])
-        return tmp
+        tmp = numpy.clip(x, -100, 100)
+        tmp = numpy.exp(tmp)
+        tmp2 = numpy.sum(tmp, axis=1)
+        tmp = tmp.T
+        tmp /= tmp2
+        return tmp.T
 
     def backward(self, y, h_out, h_in):
-        g_a = numpy.array(h_out)
-        for i in range(g_a.shape[1]):
-            g_a[y[i], i] -= 1.0
-        return g_a
+        batch_size = h_out.shape[0]
+        for i in range(batch_size):
+            h_out[i, y[i]] -= 1.0
+        return h_out
 
-    def update(self, learning_rate, regular, momentum):
+    def update(self, *args):
         return
 
 
-class FullConnectLayer(Layer):
-    # assume current layer is the k'th layer
-
-    def __init__(self, input_dimension, output_dimension):
-        Layer.__init__(self, input_dimension, output_dimension)
-        b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
-        self.w = numpy.random.uniform(low=-b, high=b, size=(input_dimension, output_dimension))
-        self.b = numpy.zeros((output_dimension, 1), dtype=numpy.float64)
-        self.delta_w = numpy.zeros(shape=self.w.shape, dtype=numpy.float64)
-        self.delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float64)
-        self.g_w = numpy.zeros(self.w.shape)
-        self.g_b = numpy.zeros(self.b.shape)
-
-    def activation(self, a):
-        raise ValueError('Calling a virtual function')
-
-    def derivative(self, h):
-        raise ValueError('Calling a virtual function')
-
-    def forward(self, x):
-        tmp = numpy.dot(self.w.T, x)
-        for i in range(tmp.shape[1]):
-            tmp[:, i] += self.b[:, 0]
-        return self.activation(tmp)
-
-    def backward(self, g_h, h_out, h_in):
-        g_a = numpy.zeros(h_out.shape, dtype=numpy.float64)
-        deri = self.derivative(h_out)
-        for i in range(g_a.shape[0]):
-            for j in range(g_a.shape[1]):
-                g_a[i, j] = g_h[i, j] * deri[i, j]
-        self.g_w = numpy.zeros(self.w.shape)
-        for i in range(g_a.shape[1]):
-            self.g_w += numpy.outer(h_in[:, i], g_a[:, i])
-            self.g_b += g_a[:, i].reshape(self.b.shape)
-        self.g_w /= self.g_w.shape[1]
-        self.g_b /= self.g_b.shape[1]
-        g_h_in = numpy.dot(self.w, g_a)
-        return g_h_in
-
-    def update(self, learning_rate, regular, momentum):
-        tmp = self.g_w + regular * 2.0 * self.w
-        self.delta_w = -learning_rate * tmp + momentum * self.delta_w
-        self.w += self.delta_w
-
-        tmp = self.g_b
-        self.delta_b = -learning_rate * tmp + momentum * self.delta_b
-        self.b += self.delta_b
-        self.g_w = numpy.zeros(self.w.shape)
-        self.g_b = numpy.zeros(self.b.shape)
-
-
-
-
-class SigmoidLayer(FullConnectLayer):
-    def __init__(self, input_dimension, output_dimension):
-        FullConnectLayer.__init__(self, input_dimension, output_dimension)
-
-    def activation(self, x):
-        x = numpy.clip(x, -500.0, 500.0)
-        tmp = numpy.zeros(x.shape)
-        for i in range(x.shape[0]):
-            for j in range(x.shape[1]):
-                tmp[i, j] = 1.0 / (1.0 + math.exp(-x[i, j]))
-        return tmp
-
-    def derivative(self, h):
-        tmp = numpy.zeros(h.shape)
-        for i in range(h.shape[0]):
-            for j in range(h.shape[1]):
-                tmp[i, j] = h[i, j] * (1 - h[i, j])
-        return tmp
-
-
-
-class SoftmaxLayer(FullConnectLayer):
-    def __init__(self, input_dimension, output_dimension):
-        FullConnectLayer.__init__(self, input_dimension, output_dimension)
-
-    def activation(self, x):
-        tmp = numpy.zeros(x.shape)
-        for i in range(tmp.shape[1]):
-            tmp[:, i] = numpy.exp(x[:, i])
-            tmp[:, i] = tmp[:, i] / numpy.sum(tmp[:, i])
-        return tmp
-
-    def derivative(self, h):
-        raise ValueError('''Softmax Layer doesn't need derivative''')
-
-    def backward(self, y, h_out, h_in):
-        g_a = numpy.array(h_out)
-        for i in range(g_a.shape[1]):
-            g_a[y[i], i] -= 1.0
-        for i in range(g_a.shape[1]):
-            tmp = numpy.outer(h_in[:, i], g_a[:, i])
-            self.g_w += tmp
-            self.g_b += g_a[:, i].reshape(self.b.shape)
-        self.g_w /= y.size
-        self.g_b /= y.size
-        g_h_in = numpy.dot(self.w, g_a)
-        return g_h_in
 
 class BN(Layer):
     def __init__(self, in_dim, out_dim):
@@ -392,8 +323,6 @@ class BN(Layer):
 
         return dx.T
 
-
-
     def update(self, learning_rate, regular, momentum):
         tmp = self.g_g + regular * 2.0 * self.gamma
         self.delta_gamma = -learning_rate * tmp + momentum * self.delta_gamma
@@ -404,3 +333,35 @@ class BN(Layer):
         self.beta += self.delta_b
         self.g_g = 0.0
         self.g_b = 0.0
+
+
+class Embedding(Layer):
+    def __init__(self, input_dimension, output_dimension, name: str = None, prev: [str] = None):
+        Layer.__init__(self, input_dimension, output_dimension, name, prev)
+       # b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
+        self.d_w = None
+        self.d_w_index = None
+       #self.w = numpy.random.uniform(low=-b, high=b, size=(input_dimension, output_dimension))
+       #self.w = numpy.array(self.w, dtype=numpy.float32)
+        self.w = numpy.random.normal(0.0, 1.0, size=(input_dimension, output_dimension)).astype(numpy.float32)
+
+    def forward(self, x):
+        return self.w[x]
+
+    def backward(self, d_h, h_out, h_in):
+        try:
+            self.d_w = numpy.append(self.d_w, d_h, axis=0)
+            self.d_w_index = numpy.append(self.d_w_index, h_in, axis=0)
+        except:
+            self.d_w = d_h
+            self.d_w_index = h_in
+        return
+
+    def update(self, learning_rate, *args):
+        # batch_size = self.d_w_index.size
+        self.w[self.d_w_index] -= learning_rate * self.d_w
+        self.d_w_index = None
+        self.d_w = None
+        return
+
+
