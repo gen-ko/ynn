@@ -9,23 +9,19 @@ name_pool: dict = {}
 
 
 class Layer(object):
-    def __init__(self, input_dimension, output_dimension, name: str=None, prev: [str]=None):
+    def __init__(self, input_dimension, output_dimension, name: str='Base'):
         self.id = name_pool.__sizeof__()
-        if name is None:
-            self.name = 'layer' + str(self.id)
+        if name in name_pool:
+            name_num = name_pool.__sizeof__()
+            new_name = name + '_' + str(name_num)
+            name_num += 1
+            while new_name in name_pool:
+                new_name = name + '_' + str(name_num)
+            self.name = new_name
         else:
             self.name = name
 
         name_pool[self.name] = self
-        self.next = []
-        if prev is None:
-            self.prev = []
-        else:
-            for prev_str in prev:
-                self.prev += name_pool[prev_str]
-            for layer in self.prev:
-                layer.next += self
-
         self.input_dimension = input_dimension
         self.output_dimension = output_dimension
 
@@ -39,9 +35,10 @@ class Layer(object):
         raise ValueError('Calling a virtual function')
 
 
+
 class Linear(Layer):
-    def __init__(self, input_dimension, output_dimension, name: str = None, prev: [str] = None):
-        Layer.__init__(self, input_dimension, output_dimension, name, prev)
+    def __init__(self, input_dimension, output_dimension, name: str = 'Linear'):
+        Layer.__init__(self, input_dimension, output_dimension, name)
         b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
         self.w = numpy.random.uniform(low=-b, high=b, size=(input_dimension, output_dimension)).astype(numpy.float32)
         self.b = numpy.zeros((output_dimension, ), dtype=numpy.float32)
@@ -192,8 +189,8 @@ class Dropout(Layer):
 
 
 class Nonlinear(Layer):
-    def __init__(self, dimension, name: str = None, prev: [str] = None):
-        Layer.__init__(self, dimension, dimension, name, prev)
+    def __init__(self, dimension, name: str = 'Nonlinear'):
+        Layer.__init__(self, dimension, dimension, name)
         return
 
     def activation(self, a):
@@ -251,8 +248,8 @@ class Tanh(Nonlinear):
 
 # modified to conform to the new input layout, (batch_size, dimension)
 class Softmax(Layer):
-    def __init__(self, dimension, name: str = None, prev: [str] = None):
-        Layer.__init__(self, dimension, dimension, name, prev)
+    def __init__(self, dimension, name: str = 'Softmax'):
+        Layer.__init__(self, dimension, dimension, name)
         return
 
     def forward(self, x):
@@ -336,8 +333,8 @@ class BN(Layer):
 
 
 class Embedding(Layer):
-    def __init__(self, input_dimension, output_dimension, name: str = None, prev: [str] = None):
-        Layer.__init__(self, input_dimension, output_dimension, name, prev)
+    def __init__(self, input_dimension, output_dimension, name: str = 'Embedding'):
+        Layer.__init__(self, input_dimension, output_dimension, name)
        # b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
         self.d_w = None
         self.d_w_index = None
@@ -349,11 +346,12 @@ class Embedding(Layer):
         return self.w[x]
 
     def backward(self, d_h, h_out, h_in):
+        batch_size = h_out.shape[0]
         try:
-            self.d_w = numpy.append(self.d_w, d_h, axis=0)
+            self.d_w = numpy.append(self.d_w, d_h / batch_size, axis=0)
             self.d_w_index = numpy.append(self.d_w_index, h_in, axis=0)
         except:
-            self.d_w = d_h
+            self.d_w = d_h / batch_size
             self.d_w_index = h_in
         return
 

@@ -77,6 +77,7 @@ def build_vocabulary(all_lines: list):
 
 vocabulary = build_vocabulary(all_lines_train)
 
+
 # truncate the dictionary
 def truncate_dictionary(dictionary: dict, size: int):
     sorted_list = sorted(vocabulary.items(), key=lambda x:x[1])
@@ -102,6 +103,7 @@ def truncate_dictionary(dictionary: dict, size: int):
     return truncated_vocabulary
 
 truncated_vocabulary = truncate_dictionary(vocabulary, 8000)
+
 
 # generate a dictionary map string to IDs
 def gen_word_to_id_dict(vocabulary):
@@ -190,7 +192,7 @@ def print_top_four_gram(four_gram: list, top_num: int):
               sep=' ')
     return
 
-flag_print_most_frequent_grams: bool = False
+flag_print_most_frequent_grams: bool = True
 if flag_print_most_frequent_grams:
     print_top_four_gram(four_gram_train, 50)
 

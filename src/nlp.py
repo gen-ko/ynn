@@ -8,43 +8,82 @@ from src import util as uf
 from src import network as nn
 from src import plotter
 
+name_pool = layer.name_pool
 
-class NlpL3TypeA(object):
-    def __init__(self, layers: [layer.Layer]):
-
+class NlpGeneral(nn.NeuralNetwork):
+    def __init__(self, layers: [layer.Layer], connections: dict):
+        nn.NeuralNetwork.__init__(self, layers, connections)
+        self.next_layers: dict = {}
+        self.prev_layers: dict = {}
+        self.input_layers: list = []
+        self.h_out: dict = {}
+        self.h_in: dict = {}
+        self.layer_order: list = []
+        self.output: numpy.ndarray
+        for key in connections:
+            if key is 'input':
+                layer_list: list = []
+                for name in connections[key]:
+                    layer_list += name_pool[name]
+                self.input_layers = layer_list
+            elif key is 'output':
+                self.output_layer = connections[key][0]
+            else:
+                current_layer = name_pool[key]
+                self.layer_order += current_layer
+                for name in connections[key]:
+                    next_layer = name_pool[name]
+                    try:
+                        self.next_layers[current_layer] += next_layer
+                    except KeyError:
+                        self.next_layers[current_layer] = [next_layer]
+                    try:
+                        self.prev_layers[next_layer] += current_layer
+                    except KeyError:
+                        self.prev_layers[next_layer] = [current_layer]
+        return
 
 
     def fprop(self, x, keep_state: bool=False):
+        input_layer_size = len(self.input_layers)
+        h_in: dict = {}
+        h_out: dict = {}
+        for i in range(input_layer_size):
+            current_layer: layer.Layer = self.input_layers[i]
+            h_in[current_layer] = x[:, i]
+
+        for i in range(len(self.layer_order)):
+            current_layer: layer.Layer = self.layer_order[i]
+            if len(self.prev_layers[current_layer]) > 1:
+                for i in range(len(self.prev_layers[current_layer])):
+                    prev_layer = self.prev_layers[current_layer][i]
+                    try:
+                        h_in[current_layer] += h_out[prev_layer]
+                    except NameError:
+                        h_in[current_layer] = h_out[prev_layer]
+            h_out[current_layer] = current_layer.forward(h_in[current_layer])
+            h_in[self.next_layers[current_layer]] = h_out[current_layer]
+
+        h_out[self.output_layer] = self.output_layer.forward(h_out[self.output_layer])
         if keep_state:
-            self.h0_0 = x[:, 0]
-            self.h0_1 = x[:, 1]
-            self.h0_2 = x[:, 2]
-            self.h1_0 = self.layer0.forward(self.h0_0)
-            self.h1_1 = self.layer0.forward(self.h0_1)
-            self.h1_2 = self.layer0.forward(self.h0_2)
-            self.h2_0 = self.layer1_0.forward(self.h1_0)
-            self.h2_1 = self.layer1_1.forward(self.h1_1)
-            self.h2_2 = self.layer1_2.forward(self.h1_2)
-            self.h2 = self.h2_0 + self.h2_1 + self.h2_2
-            self.h3 = self.layer2.forward(self.h2)
-            self.h4 = self.layer3.forward(self.h3)
-            return self.h4
-        else:
-            h0_0 = x[:, 0]
-            h0_1 = x[:, 1]
-            h0_2 = x[:, 2]
-            h1_0 = self.layer0.forward(h0_0)
-            h1_1 = self.layer0.forward(h0_1)
-            h1_2 = self.layer0.forward(h0_2)
-            h2_0 = self.layer1_0.forward(h1_0)
-            h2_1 = self.layer1_1.forward(h1_1)
-            h2_2 = self.layer1_2.forward(h1_2)
-            h2 = h2_0 + h2_1 + h2_2
-            h3 = self.layer2.forward(h2)
-            h4 = self.layer3.forward(h3)
-            return h4
+            self.h_in = h_in
+            self.h_out = h_out
+
+        return h_out[self.output_layer]
+
 
     def bprop(self, y):
+        d_h_top: dict = {}
+        d_h_down: dict = {}
+
+        d_h_down[self.output_layer] = self.output_layer.backward(y,
+                                                                 self.h_out[self.output_layer],
+                                                                 self.h_in[self.output_layer])
+
+
+
+
+
         d_h3 = self.layer3.backward(y, self.h4, self.h3)
         d_h2 = self.layer2.backward(d_h3, self.h3, self.h2)
         # the gradiants of h2 is the same as h2_0, h2_1 and h2_2, which can be derived
@@ -119,14 +158,14 @@ class NlpL3TypeB(nn.NeuralNetwork):
     def __init__(self):
         self.train_status = None
         self.train_settings = None
-        self.layer0 = layer.Embedding(8000, 16)
-        self.layer1_0 = layer.Linear(16, 128)
-        self.layer1_1 = layer.Linear(16, 128)
-        self.layer1_2 = layer.Linear(16, 128)
-        self.layer2 = layer.Tanh(128)
-        self.layer3 = layer.Linear(128, 8000)
+        self.layer0 = layer.Embedding(8000, 16, 'l0')
+        self.layer1_0 = layer.Linear(16, 128, 'l1-0')
+        self.layer1_1 = layer.Linear(16, 128, 'l1-1')
+        self.layer1_2 = layer.Linear(16, 128, 'l1-2')
+        self.layer2 = layer.Tanh(128, 'l2')
+        self.layer3 = layer.Linear(128, 8000, 'l3')
 
-        self.layer4 = layer.Softmax(8000)
+        self.layer4 = layer.Softmax(8000, 'l4')
 
         self.num_class = 8000
 

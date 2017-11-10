@@ -16,6 +16,11 @@ def init_nn(random_seed=1099):
 
 
 class NeuralNetwork(object):
+    def __init__(self, layers: [layer.Layer], connection: dict):
+        self.layers = layers
+        self.connection = connection
+        return
+
     def fprop(self, *args):
         raise ValueError('Calling a virtual function')
 

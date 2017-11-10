@@ -4,6 +4,7 @@ import os
 import sys
 import src.load_data as load_data
 from src import layer
+from src import network
 import src.nlp as nlp
 import matplotlib.pyplot as plt
 import numpy
@@ -36,6 +37,32 @@ y_valid = data_valid[:, 3]
 
 # set the random seed
 numpy.random.seed(1099)
+
+
+layers = [layer.Embedding(8000, 16, 'eb-1'),
+          layer.Embedding(8000, 16, 'eb-2'),
+          layer.Embedding(8000, 16, 'eb-3'),
+          layer.Linear(16, 128, 'l1-1'),
+          layer.Linear(16, 128, 'l1-2'),
+          layer.Linear(16, 128, 'l1-3'),
+          layer.Linear(128, 8000, 'l2'),
+          layer.Softmax(8000, 'softmax')]
+
+connection = {'input': ['eb-1', 'eb-2', 'eb-3'],
+              'eb-1': ['l1-1'],
+              'eb-2': ['l1-2'],
+              'eb-3': ['l1-3'],
+              'l1-1': ['l2'],
+              'l1-2': ['l2'],
+              'l1-3': ['l2'],
+              'l2': ['softmax'],
+              'output': ['softmax']
+              }
+
+myNN = network.NeuralNetwork(layers, connection)
+
+
+
 
 
 # build the neural network
