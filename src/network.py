@@ -16,18 +16,10 @@ def init_nn(random_seed=1099):
 
 
 class NeuralNetwork(object):
-    def __init__(self, layers: [layer.Layer], connection: dict):
-        self.layers = layers
-        self.connection = connection
-        return
-
     def fprop(self, *args):
         raise ValueError('Calling a virtual function')
 
     def bprop(self, *args):
-        raise ValueError('Calling a virtual function')
-
-    def update(self, *args):
         raise ValueError('Calling a virtual function')
 
     def status_callback(self, *args):
@@ -35,6 +27,22 @@ class NeuralNetwork(object):
 
     def plot_callback(self, *args):
         raise ValueError('Calling a virtual function')
+
+    def update(self, train_settings: uf.TrainSettings):
+        for layer_c in self.layers:
+            layer_c.update(train_settings)
+        return
+
+    def dump(self):
+        dump_obj = list()
+        for layer_c in self.layers:
+            dump_obj.append(layer_c.dump())
+        return dump_obj
+
+    def load(self, dump_obj: list):
+        for layer_c in self.layers:
+            layer_c.load(dump_obj.pop(0))
+        return
 
 
 class NeuralNetwork_Dumpable(object):

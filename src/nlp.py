@@ -154,7 +154,100 @@ class NlpGeneral(nn.NeuralNetwork):
         return
 
 
+
+
+
 class NlpL3TypeB(nn.NeuralNetwork):
+    def __init__(self, dict_size: int, embedding_size: int, hidden_units: int):
+        self.layers = [layer.Embedding(dict_size, embedding_size, 'l0'),     # layer 0
+                       layer.Linear(embedding_size, hidden_units, 'l1-0'),   # layer 1
+                       layer.Linear(embedding_size, hidden_units, 'l1-1'),   # layer 2
+                       layer.Linear(embedding_size, hidden_units, 'l1-2'),   # layer 3
+                       layer.Tanh(hidden_units, 'l2'),                       # layer 4
+                       layer.Linear(hidden_units, dict_size, 'l3'),          # layer 5
+                       layer.Softmax(dict_size, 'l4')]                       # layer 6
+        self.h: list = None
+        return
+
+    def fprop(self, x, keep_state: bool=False):
+        h = list()
+        h.append(x[:, 0])  # h0
+        h.append(x[:, 1])  # h1
+        h.append(x[:, 2])  # h2
+        h.append(self.layers[0].forward(h[0]))  # h3
+        h.append(self.layers[0].forward(h[1]))  # h4
+        h.append(self.layers[0].forward(h[2]))  # h5
+        h.append(self.layers[1].forward(h[3]))  # h6
+        h.append(self.layers[2].forward(h[4]))  # h7
+        h.append(self.layers[3].forward(h[5]))  # h8
+        h.append(h[6] + h[7] + h[8])            # h9
+        h.append(self.layers[4].forward(h[9]))  # h10
+        h.append(self.layers[5].forward(h[10]))  # h11
+        h.append(self.layers[6].forward(h[11]))  # h12
+
+        if keep_state:
+            self.h = h
+
+        return h[-1]
+
+    def bprop(self, y):
+        d_h4 = self.layers[6].backward(y, self.h[12], self.h[11])
+        d_h3 = self.layers[5].backward(d_h4, self.h[11], self.h[10])
+        d_h2 = self.layers[4].backward(d_h3, self.h[10], self.h[9])
+        # the gradiants of h2 is the same as h2_0, h2_1 and h2_2, which can be derived
+        d_h1_2 = self.layers[3].backward(d_h2, self.h[8], self.h[5])
+        d_h1_1 = self.layers[2].backward(d_h2, self.h[7], self.h[4])
+        d_h1_0 = self.layers[1].backward(d_h2, self.h[6], self.h[3])
+        self.layers[0].backward(d_h1_2, self.h[5], self.h[2])
+        self.layers[0].backward(d_h1_1, self.h[4], self.h[1])
+        self.layers[0].backward(d_h1_0, self.h[3], self.h[0])
+        return
+
+class NlpL3TypeA(nn.NeuralNetwork):
+    def __init__(self, dict_size: int, embedding_size: int, hidden_units: int):
+        self.layers = [layer.Embedding(dict_size, embedding_size, 'l0'),
+                       layer.Linear(embedding_size, hidden_units, 'l1-0'),
+                       layer.Linear(embedding_size, hidden_units, 'l1-1'),
+                       layer.Linear(embedding_size, hidden_units, 'l1-2'),
+                       layer.Linear(hidden_units, dict_size, 'l2'),
+                       layer.Softmax(dict_size, 'l3')]
+        self.h: list = None
+        return
+
+    def fprop(self, x, keep_state: bool=False):
+        h = list()
+        h.append(x[:, 0])  # h0
+        h.append(x[:, 1])  # h1
+        h.append(x[:, 2])  # h2
+        h.append(self.layers[0].forward(h[0]))  # h3
+        h.append(self.layers[0].forward(h[1]))  # h4
+        h.append(self.layers[0].forward(h[2]))  # h5
+        h.append(self.layers[1].forward(h[3]))  # h6
+        h.append(self.layers[2].forward(h[4]))  # h7
+        h.append(self.layers[3].forward(h[5]))  # h8
+        h.append(h[6] + h[7] + h[8])            # h9
+        h.append(self.layers[4].forward(h[9]))  # h10
+        h.append(self.layers[5].forward(h[10]))  # h11
+
+        if keep_state:
+            self.h = h
+
+        return h[-1]
+
+    def bprop(self, y):
+        d_h3 = self.layers[5].backward(y, self.h[11], self.h[10])
+        d_h2 = self.layers[4].backward(d_h3, self.h[10], self.h[9])
+        # the gradiants of h2 is the same as h2_0, h2_1 and h2_2, which can be derived
+        d_h1_2 = self.layers[3].backward(d_h2, self.h[8], self.h[5])
+        d_h1_1 = self.layers[2].backward(d_h2, self.h[7], self.h[4])
+        d_h1_0 = self.layers[1].backward(d_h2, self.h[6], self.h[3])
+        self.layers[0].backward(d_h1_2, self.h[5], self.h[2])
+        self.layers[0].backward(d_h1_1, self.h[4], self.h[1])
+        self.layers[0].backward(d_h1_0, self.h[3], self.h[0])
+        return
+
+
+class NlpL3TypeB2(nn.NeuralNetwork):
     def __init__(self):
         self.train_status = None
         self.train_settings = None
@@ -259,26 +352,6 @@ class NlpL3TypeB(nn.NeuralNetwork):
         return
 
 
-def loss_callback(status: uf.Status):
-    current_epoch = status.current_epoch
-
-    status.loss[current_epoch] += (uf.cross_entropy_loss(status.soft_prob,
-                                                        status.y_batch,
-                                                        take_average=False) / status.size)
-    status.error[current_epoch] += (numpy.sum(status.predict != status.y_batch) / status.size)
-    try:
-        status.perplexity[current_epoch] += uf.perplexity(status.soft_prob) / status.size
-    except TypeError:
-        status.perplexity = numpy.zeros(shape=(status.target_epoch,), dtype=numpy.float32)
-        tmp = uf.perplexity(status.soft_prob) / status.size
-        status.perplexity[current_epoch] += tmp
-    return
-
-
-def plot_callback(status_train: uf.Status, status_valid: uf.Status):
-    plotter.plot_loss(status_train, status_valid)
-    plotter.plot_perplexity(status_train, status_valid)
-    return
 
 
 

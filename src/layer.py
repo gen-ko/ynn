@@ -2,6 +2,7 @@ import numpy
 import math
 from src import ytensor
 import warnings
+import src.util as uf
 
 warnings.filterwarnings('error')
 
@@ -32,15 +33,20 @@ class Layer(object):
         raise ValueError('Calling a virtual function')
 
     def update(self, *args):
-        raise ValueError('Calling a virtual function')
+        return
 
+    def dump(self):
+        return 0
+
+    def load(self, *args):
+        return
 
 
 class Linear(Layer):
     def __init__(self, input_dimension, output_dimension, name: str = 'Linear'):
         Layer.__init__(self, input_dimension, output_dimension, name)
-        b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
-        self.w = numpy.random.uniform(low=-b, high=b, size=(input_dimension, output_dimension)).astype(numpy.float32)
+        wi = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
+        self.w = numpy.random.uniform(low=-wi, high=wi, size=(input_dimension, output_dimension)).astype(numpy.float32)
         self.b = numpy.zeros((output_dimension, ), dtype=numpy.float32)
         self.delta_w = numpy.zeros(shape=self.w.shape, dtype=numpy.float32)
         self.delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float32)
@@ -48,25 +54,27 @@ class Linear(Layer):
         self.d_b = numpy.zeros(self.b.shape, dtype=numpy.float32)
 
     def forward(self, x):
-        tmp = numpy.dot(x, self.w)
-        tmp += self.b
-        return tmp
+        return numpy.dot(x, self.w) + self.b
 
-    def backward(self, d_a, h_out, h_in):
+    def backward(self, d_top, h_top, h_bottom):
         # slow, 5s
-        batch_size = d_a.shape[0]
-        self.d_w = numpy.tensordot(h_in, d_a, axes=(0, 0))
-        self.d_b = numpy.sum(d_a, axis=0)
+        batch_size = d_top.shape[0]
+        self.d_w = numpy.tensordot(h_bottom, d_top, axes=(0, 0))
+        self.d_b = numpy.sum(d_top, axis=0)
         #for i in range(batch_size):
         #    self.d_w += numpy.outer(h_in[i], d_a[i])
         #    self.d_b += d_a[i]
         self.d_w /= batch_size
         self.d_b /= batch_size
-        d_h_in = numpy.dot(d_a, self.w.T)
-        return d_h_in
+        d_bottom = numpy.dot(d_top, self.w.T)
+        return d_bottom
 
-    def update(self, learning_rate, regular=0.0, momentum=0.0):
-        tmp = self.d_w + regular * 2.0 * self.w
+    def update(self, train_settings: uf.TrainSettings):
+        regular = train_settings.l2 * 2.0
+        momentum = train_settings.momentum
+        learning_rate = train_settings.learning_rate
+
+        tmp = self.d_w + regular * self.w
         self.delta_w = -learning_rate * tmp + momentum * self.delta_w
         self.w += self.delta_w
 
@@ -75,9 +83,71 @@ class Linear(Layer):
         self.b += self.delta_b
         self.d_w = numpy.zeros(self.w.shape)
         self.d_b = numpy.zeros(self.b.shape)
+        return
 
-        #self.w -= self.d_w * learning_rate
-        #self.b -= self.d_b * learning_rate
+    def dump(self):
+        return [self.w, self.b]
+
+    def load(self, blob):
+        self.w = blob[0]
+        self.b = blob[1]
+        return
+
+
+class Recursive(Layer):
+    def __init__(self, input_dimension, output_dimension, name: str = 'Recursive'):
+        Layer.__init__(self, input_dimension, output_dimension, name)
+        wi = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
+        self.wxh = numpy.random.uniform(low=-wi, high=wi, size=(input_dimension, output_dimension)).astype(numpy.float32)
+        self.whh = numpy.random.uniform(low=-wi, high=wi, size=(output_dimension,output_dimension)).astype(numpy.float32)
+        self.bxh = numpy.zeros((output_dimension,), dtype=numpy.float32)
+        self.bhh = numpy.zeros((output_dimension,), dtype=numpy.float32)
+        self.h_last = numpy.zeros(shape=(output_dimension,), dtype=numpy.float32)
+        self.delta_w = numpy.zeros(shape=self.w.shape, dtype=numpy.float32)
+        self.delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float32)
+        self.d_wxh = numpy.zeros(self.w.shape, dtype=numpy.float32)
+        self.d_bxh = numpy.zeros(self.b.shape, dtype=numpy.float32)
+
+    def forward(self, x):
+        t1 = numpy.dot(x, self.wxh) + self.bxh
+        t2 = numpy.dot(self.h_last, self.whh) + self.bhh
+        return numpy.dot(x, self.w) + self.b
+
+    def backward(self, d_top, h_top, h_bottom):
+        # slow, 5s
+        batch_size = d_top.shape[0]
+        self.d_w = numpy.tensordot(h_bottom, d_top, axes=(0, 0))
+        self.d_b = numpy.sum(d_top, axis=0)
+        #for i in range(batch_size):
+        #    self.d_w += numpy.outer(h_in[i], d_a[i])
+        #    self.d_b += d_a[i]
+        self.d_w /= batch_size
+        self.d_b /= batch_size
+        d_bottom = numpy.dot(d_top, self.w.T)
+        return d_bottom
+
+    def update(self, train_settings: uf.TrainSettings):
+        regular = train_settings.l2 * 2.0
+        momentum = train_settings.momentum
+        learning_rate = train_settings.learning_rate
+
+        tmp = self.d_w + regular * self.w
+        self.delta_w = -learning_rate * tmp + momentum * self.delta_w
+        self.w += self.delta_w
+
+        tmp = self.d_b
+        self.delta_b = -learning_rate * tmp + momentum * self.delta_b
+        self.b += self.delta_b
+        self.d_w = numpy.zeros(self.w.shape)
+        self.d_b = numpy.zeros(self.b.shape)
+        return
+
+    def dump(self):
+        return [self.w, self.b]
+
+    def load(self, blob):
+        self.w = blob[0]
+        self.b = blob[1]
         return
 
 
@@ -207,7 +277,7 @@ class Nonlinear(Layer):
     def forward(self, x):
         return self.activation(x)
 
-    def update(self, learning_rate, regular, momentum):
+    def update(self, train_settings: uf.TrainSettings):
         return
 
 
@@ -355,11 +425,17 @@ class Embedding(Layer):
             self.d_w_index = h_in
         return
 
-    def update(self, learning_rate, *args):
+    def update(self, train_settings: uf.TrainSettings):
         # batch_size = self.d_w_index.size
-        self.w[self.d_w_index] -= learning_rate * self.d_w
+        self.w[self.d_w_index] -= train_settings.learning_rate * self.d_w
         self.d_w_index = None
         self.d_w = None
         return
 
+    def dump(self):
+        return [self.w]
+
+    def load(self, blob):
+        self.w = blob[0]
+        return
 

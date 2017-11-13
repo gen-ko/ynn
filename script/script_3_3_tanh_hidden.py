@@ -10,6 +10,8 @@ import numpy
 import os
 import pickle
 from src import util as uf
+from src import callback as cb
+from src import train as utf
 
 
 # resolve file path
@@ -37,14 +39,12 @@ y_valid = data_valid[:, 3]
 
 # set the random seed
 numpy.random.seed(1099)
-
-
-
 data_store_train = uf.DataStore(x_train, y_train)
 data_store_valid = uf.DataStore(x_valid, y_valid)
-train_settings = uf.TrainSettings(learning_rate=0.1, batch_size=512, momentum=0.9, plot_callback=nlp.plot_callback,
-                                  loss_callback=nlp.loss_callback, filename='script-3-3')
 
+
+train_settings = uf.TrainSettings(learning_rate=0.1, batch_size=512, momentum=0.0, plot_callback=cb.plot_callback,
+                                  loss_callback=cb.loss_callback, filename='script-3-3', epoch=100, prefix='h128')
 # build the neural network
-mynlp = nlp.NlpL3TypeB()
-uf.cross_train(mynlp, data_store_train, data_store_valid, train_settings)
+mynlp = nlp.NlpL3TypeB(dict_size=8000, embedding_size=16, hidden_units=128)
+utf.cross_train(mynlp, data_store_train, data_store_valid, train_settings)

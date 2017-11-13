@@ -3,6 +3,7 @@ import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import os
 from src import util as uf
+from src import train as utf
 
 def reshape_row_major(x, num_row, num_column):
     # type: (numpy.ndarray, int, int) -> numpy.ndarray
@@ -61,17 +62,17 @@ def plot_base(v1, v2, label, save_path):
     return
 
 
-def plot_perplexity(status_train: uf.Status, status_valid: uf.Status):
+def plot_perplexity(status_train: utf.Status, status_valid: utf.Status):
     try:
         plot_file = status_train.train_settings.filename
     except ValueError:
         plot_file = 'loss'
     try:
-        filename_prefix = status_train.train_settings.filename_prefix
+        filename_prefix = status_train.train_settings.prefix
     except AttributeError:
         filename_prefix = 'prefix'
     try:
-        filename_suffix = status_train.train_settings.filename_suffix
+        filename_suffix = status_train.train_settings.suffix
     except AttributeError:
         filename_suffix = 'perp'
     filename_extension = '.png'
@@ -87,17 +88,17 @@ def plot_perplexity(status_train: uf.Status, status_valid: uf.Status):
     return
 
 
-def plot_loss(status_train: uf.Status, status_valid: uf.Status):
+def plot_loss(status_train: utf.Status, status_valid: utf.Status):
     try:
         plot_file = status_train.train_settings.filename
     except AttributeError:
         plot_file = 'loss'
     try:
-        filename_prefix = status_train.train_settings.filename_prefix
+        filename_prefix = status_train.train_settings.prefix
     except AttributeError:
         filename_prefix = 'prefix'
     try:
-        filename_suffix = status_train.train_settings.filename_suffix
+        filename_suffix = status_train.train_settings.suffix
     except AttributeError:
         filename_suffix = 'loss'
     filename_extension = '.png'
