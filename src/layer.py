@@ -26,7 +26,7 @@ class Layer(object):
         self.input_dimension = input_dimension
         self.output_dimension = output_dimension
 
-    def forward(self, x):
+    def forward(self, *args):
         raise ValueError('Calling a virtual function')
 
     def backward(self, *args):
@@ -93,61 +93,69 @@ class Linear(Layer):
         self.b = blob[1]
         return
 
-
+# vanilla RNN
 class Recursive(Layer):
     def __init__(self, input_dimension, output_dimension, name: str = 'Recursive'):
         Layer.__init__(self, input_dimension, output_dimension, name)
         wi = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
         self.wxh = numpy.random.uniform(low=-wi, high=wi, size=(input_dimension, output_dimension)).astype(numpy.float32)
         self.whh = numpy.random.uniform(low=-wi, high=wi, size=(output_dimension,output_dimension)).astype(numpy.float32)
-        self.bxh = numpy.zeros((output_dimension,), dtype=numpy.float32)
-        self.bhh = numpy.zeros((output_dimension,), dtype=numpy.float32)
-        self.h_last = numpy.zeros(shape=(output_dimension,), dtype=numpy.float32)
-        self.delta_w = numpy.zeros(shape=self.w.shape, dtype=numpy.float32)
+        self.b = numpy.zeros((output_dimension,), dtype=numpy.float32)
+        self.delta_wxh = numpy.zeros(shape=self.wxh.shape, dtype=numpy.float32)
+        self.delta_whh = numpy.zeros(shape=self.whh.shape, dtype=numpy.float32)
         self.delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float32)
-        self.d_wxh = numpy.zeros(self.w.shape, dtype=numpy.float32)
-        self.d_bxh = numpy.zeros(self.b.shape, dtype=numpy.float32)
+        self.d_wxh = numpy.zeros(self.wxh.shape, dtype=numpy.float32)
+        self.d_whh = numpy.zeros(self.whh.shape, dtype=numpy.float32)
+        self.d_b = numpy.zeros(self.b.shape, dtype=numpy.float32)
+        self.default_d_top: numpy.ndarray = None
+        self.default_d_state_top: numpy.ndarray = None
 
-    def forward(self, x):
-        t1 = numpy.dot(x, self.wxh) + self.bxh
-        t2 = numpy.dot(self.h_last, self.whh) + self.bhh
-        return numpy.dot(x, self.w) + self.b
+    def forward(self, h_bottom, state_in):
+        t1 = numpy.dot(h_bottom, self.wxh)
+        t2 = numpy.dot(state_in, self.whh)
+        h_top = t1 + t2 + self.b
+        return h_top
 
-    def backward(self, d_top, h_top, h_bottom):
-        # slow, 5s
+    def backward(self, d_top, h_top, h_bottom, state_bottom):
         batch_size = d_top.shape[0]
-        self.d_w = numpy.tensordot(h_bottom, d_top, axes=(0, 0))
-        self.d_b = numpy.sum(d_top, axis=0)
-        #for i in range(batch_size):
-        #    self.d_w += numpy.outer(h_in[i], d_a[i])
-        #    self.d_b += d_a[i]
-        self.d_w /= batch_size
-        self.d_b /= batch_size
-        d_bottom = numpy.dot(d_top, self.w.T)
-        return d_bottom
+
+        self.d_wxh += numpy.tensordot(h_bottom, d_top, axes=(0, 0)) / batch_size
+        self.d_whh += numpy.tensordot(state_bottom, d_top, axes=(0, 0)) / batch_size
+        self.d_b += numpy.sum(d_top, axis=0) / batch_size
+
+        d_bottom = numpy.dot(d_top, self.wxh.T)
+        d_state = numpy.dot(d_top, self.whh.T)
+        return d_bottom, d_state
 
     def update(self, train_settings: uf.TrainSettings):
         regular = train_settings.l2 * 2.0
         momentum = train_settings.momentum
         learning_rate = train_settings.learning_rate
 
-        tmp = self.d_w + regular * self.w
-        self.delta_w = -learning_rate * tmp + momentum * self.delta_w
-        self.w += self.delta_w
+        tmp = self.d_wxh + regular * self.wxh
+        self.delta_wxh = -learning_rate * tmp + momentum * self.delta_wxh
+        self.wxh += self.delta_wxh
+
+        tmp = self.d_whh + regular * self.whh
+        self.delta_whh = -learning_rate * tmp + momentum * self.delta_whh
+        self.whh += self.delta_whh
 
         tmp = self.d_b
         self.delta_b = -learning_rate * tmp + momentum * self.delta_b
         self.b += self.delta_b
-        self.d_w = numpy.zeros(self.w.shape)
+
+        self.d_wxh = numpy.zeros(self.wxh.shape)
+        self.d_whh = numpy.zeros(self.whh.shape)
         self.d_b = numpy.zeros(self.b.shape)
         return
 
     def dump(self):
-        return [self.w, self.b]
+        return [self.wxh, self.whh, self.b]
 
     def load(self, blob):
-        self.w = blob[0]
-        self.b = blob[1]
+        self.wxh = blob[0]
+        self.whh = blob[1]
+        self.b = blob[2]
         return
 
 

@@ -82,9 +82,10 @@ class DataStore(object):
     def draw_batch_dual(self, batch_size: int) -> (bool, numpy.ndarray, numpy.ndarray):
         leftover: int = batch_size + self.draw_num - self.size
         if leftover > 0:
+            self.shuffle()
             x1 = self.x_shuffled[self.draw_num:self.size]
             y1 = self.y_shuffled[self.draw_num:self.size]
-            self.shuffle()
+
             x2 = self.x_shuffled[0:leftover]
             y2 = self.y_shuffled[0:leftover]
             self.draw_num = leftover
@@ -92,8 +93,8 @@ class DataStore(object):
             y = numpy.append(y1, y2, axis=0)
             return True, x, y
         elif leftover == 0:
-            x = self.x_shuffled
-            y = self.y_shuffled
+            x = self.x_shuffled[self.draw_num:self.size]
+            y = self.y_shuffled[self.draw_num:self.size]
             self.shuffle()
             self.draw_num = 0
             return True, x, y
@@ -107,14 +108,15 @@ class DataStore(object):
     def draw_batch_x(self, batch_size: int) -> (bool, numpy.ndarray):
         leftover: int = batch_size + self.draw_num - self.size
         if leftover > 0:
-            x1 = self.x_shuffled[self.draw_num:self.size]
             self.shuffle()
+            x1 = self.x_shuffled[self.draw_num:self.size]
+
             x2 = self.x_shuffled[0:leftover]
             self.draw_num = leftover
             x = numpy.append(x1, x2, axis=0)
             return True, x
         elif leftover == 0:
-            x = self.x_shuffled
+            x = self.x_shuffled[self.draw_num:self.size]
             self.shuffle()
             self.draw_num = 0
             return True, x

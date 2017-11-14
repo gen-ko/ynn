@@ -247,109 +247,69 @@ class NlpL3TypeA(nn.NeuralNetwork):
         return
 
 
-class NlpL3TypeB2(nn.NeuralNetwork):
-    def __init__(self):
-        self.train_status = None
-        self.train_settings = None
-        self.layer0 = layer.Embedding(8000, 16, 'l0')
-        self.layer1_0 = layer.Linear(16, 128, 'l1-0')
-        self.layer1_1 = layer.Linear(16, 128, 'l1-1')
-        self.layer1_2 = layer.Linear(16, 128, 'l1-2')
-        self.layer2 = layer.Tanh(128, 'l2')
-        self.layer3 = layer.Linear(128, 8000, 'l3')
-
-        self.layer4 = layer.Softmax(8000, 'l4')
-
-        self.num_class = 8000
-
-        self.learning_rate = None
-        self.l1_regularize = None
-        self.l2_regularize = None
-
-        self.h0_0 = None
-        self.h0_1 = None
-        self.h0_2 = None
-
-        self.h1_0 = None
-        self.h1_1 = None
-        self.h1_2 = None
-
-        self.h2_0 = None
-        self.h2_1 = None
-        self.h2_2 = None
-        self.h2 = None
-        self.h3 = None
-        self.h4 = None
-        self.h5 = None
-
-        # training parameters
-        self.target_epoch = None
-        self.current_epoch = None
-        self.learning_rate = None
-        self.l1_regularize = None
-        self.l2_regularize = None
-        self.batch_size = None
-        self.momentum = None
-
-        self.debug = None
-
-        self.train_error = numpy.zeros(shape=(1,), dtype=numpy.float64)
-        self.valid_error = numpy.zeros(shape=(1,), dtype=numpy.float64)
-        self.train_loss = numpy.zeros(shape=(1,), dtype=numpy.float64)
-        self.valid_loss = numpy.zeros(shape=(1,), dtype=numpy.float64)
+class NlpL3TypeR(nn.NeuralNetwork):
+    def __init__(self, dict_size: int, embedding_size: int, hidden_units: int):
+        self.layers = [layer.Embedding(dict_size, embedding_size, 'l0-Embedding'),
+                       layer.Recursive(embedding_size, hidden_units, 'l1-R'),
+                       layer.Tanh(hidden_units, 'l2-Tanh'),
+                       layer.Linear(hidden_units, dict_size, 'l3-L'),
+                       layer.Softmax(dict_size, 'l4-Softmax')]
+        self.h: list = None
+        return
 
     def fprop(self, x, keep_state: bool=False):
+        h = list()
+        h.append(x[:, 0])  # h0
+        h.append(x[:, 1])  # h1
+        h.append(x[:, 2])  # h2
+        h.append(self.layers[0].forward(h[0]))  # h3
+        h.append(self.layers[0].forward(h[1]))  # h4
+        h.append(self.layers[0].forward(h[2]))  # h5
+
+        num_batch = x.shape[0]
+        self.s0 = numpy.zeros((num_batch, self.layers[1].output_dimension), dtype=numpy.float32)
+        s1 = self.layers[1].forward(h[3], self.s0)
+        a1 = self.layers[2].forward(s1)
+        h.append(s1)       # h6
+        h.append(a1)       # h7
+        s2 = self.layers[1].forward(h[4], a1)
+        a2 = self.layers[2].forward(s2)
+        h.append(s2)       # h8
+        h.append(a2)       # h9
+        s3 = self.layers[1].forward(h[5], a2)
+        a3 = self.layers[2].forward(s3)
+        h.append(s3)       # h10
+        h.append(a3)       # h11
+
+        h.append(self.layers[3].forward(a3))    # h12
+        h.append(self.layers[4].forward(h[12]))  # h13
+
         if keep_state:
-            self.h0_0 = x[:, 0]
-            self.h0_1 = x[:, 1]
-            self.h0_2 = x[:, 2]
-            self.h1_0 = self.layer0.forward(self.h0_0)
-            self.h1_1 = self.layer0.forward(self.h0_1)
-            self.h1_2 = self.layer0.forward(self.h0_2)
-            self.h2_0 = self.layer1_0.forward(self.h1_0)
-            self.h2_1 = self.layer1_1.forward(self.h1_1)
-            self.h2_2 = self.layer1_2.forward(self.h1_2)
-            self.h2 = self.h2_0 + self.h2_1 + self.h2_2
-            self.h3 = self.layer2.forward(self.h2)
-            self.h4 = self.layer3.forward(self.h3)
-            self.h5 = self.layer4.forward(self.h4)
-            return self.h5
-        else:
-            h0_0 = x[:, 0]
-            h0_1 = x[:, 1]
-            h0_2 = x[:, 2]
-            h1_0 = self.layer0.forward(h0_0)
-            h1_1 = self.layer0.forward(h0_1)
-            h1_2 = self.layer0.forward(h0_2)
-            h2_0 = self.layer1_0.forward(h1_0)
-            h2_1 = self.layer1_1.forward(h1_1)
-            h2_2 = self.layer1_2.forward(h1_2)
-            h2 = h2_0 + h2_1 + h2_2
-            h3 = self.layer2.forward(h2)
-            h4 = self.layer3.forward(h3)
-            h5 = self.layer4.forward(h4)
-            return h5
+            self.h = h
+
+        return h[-1]
 
     def bprop(self, y):
-        d_h4 = self.layer4.backward(y, self.h5, self.h4)
-        d_h3 = self.layer3.backward(d_h4, self.h4, self.h3)
-        d_h2 = self.layer2.backward(d_h3, self.h3, self.h2)
-        # the gradiants of h2 is the same as h2_0, h2_1 and h2_2, which can be derived
-        d_h1_2 = self.layer1_2.backward(d_h2, self.h2_2, self.h1_2)
-        d_h1_1 = self.layer1_1.backward(d_h2, self.h2_1, self.h1_1)
-        d_h1_0 = self.layer1_0.backward(d_h2, self.h2_0, self.h1_0)
-        self.layer0.backward(d_h1_2, self.h1_2, self.h0_2)
-        self.layer0.backward(d_h1_1, self.h1_1, self.h0_1)
-        self.layer0.backward(d_h1_0, self.h1_0, self.h0_0)
+        d_h12 = self.layers[4].backward(y, self.h[13], self.h[12])
+        d_h11 = self.layers[3].backward(d_h12, self.h[12], self.h[11])
+
+        d_h10 = self.layers[2].backward(d_h11, self.h[11], self.h[10])
+        d_h5, d_h9 = self.layers[1].backward(d_h10, self.h[10], self.h[5], self.h[9])
+
+        d_h8 = self.layers[2].backward(d_h9, self.h[9], self.h[8])
+        d_h4, d_h7 = self.layers[1].backward(d_h8, self.h[8], self.h[4], self.h[7])
+
+        d_h6 = self.layers[2].backward(d_h7, self.h[7], self.h[6])
+        d_h3, _ = self.layers[1].backward(d_h6, self.h[6], self.h[3], self.s0)
+
+        self.layers[0].backward(d_h3, self.h[3], self.h[0])
+        self.layers[0].backward(d_h4, self.h[4], self.h[1])
+        self.layers[0].backward(d_h5, self.h[5], self.h[2])
+
+
         return
 
-    def update(self, train_settings: uf.TrainSettings):
-        self.layer0.update(train_settings.learning_rate)
-        self.layer1_0.update(train_settings.learning_rate, momentum=train_settings.momentum)
-        self.layer1_1.update(train_settings.learning_rate, momentum=train_settings.momentum)
-        self.layer1_2.update(train_settings.learning_rate, momentum=train_settings.momentum)
-        self.layer3.update(train_settings.learning_rate, momentum=train_settings.momentum)
-        return
+
 
 
 
