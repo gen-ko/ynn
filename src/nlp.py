@@ -305,8 +305,72 @@ class NlpL3TypeR(nn.NeuralNetwork):
         self.layers[0].backward(d_h3, self.h[3], self.h[0])
         self.layers[0].backward(d_h4, self.h[4], self.h[1])
         self.layers[0].backward(d_h5, self.h[5], self.h[2])
+        return
 
 
+class NlpL3TypeRC(nn.NeuralNetwork):
+    def __init__(self, dict_size: int, embedding_size: int, hidden_units: int):
+        self.layers = [layer.Embedding(dict_size, embedding_size, 'l0-Embedding'),
+                       layer.Recursive(embedding_size, hidden_units, 'l1-R'),
+                       layer.Tanh(hidden_units, 'l2-Tanh'),
+                       layer.Linear(hidden_units, dict_size, 'l3-L'),
+                       layer.Softmax(dict_size, 'l4-Softmax')]
+        self.h: list = None
+        return
+
+    def fprop(self, x, keep_state: bool=False):
+        h = list()
+        h.append(x[:, 0])  # h0
+        h.append(x[:, 1])  # h1
+        h.append(x[:, 2])  # h2
+        h.append(self.layers[0].forward(h[0]))  # h3
+        h.append(self.layers[0].forward(h[1]))  # h4
+        h.append(self.layers[0].forward(h[2]))  # h5
+
+        num_batch = x.shape[0]
+        self.s0 = numpy.zeros((num_batch, self.layers[1].output_dimension), dtype=numpy.float32)
+        s1 = self.layers[1].forward(h[3], self.s0)
+        a1 = self.layers[2].forward(s1)
+        h.append(s1)       # h6
+        h.append(a1)       # h7
+        s2 = self.layers[1].forward(h[4], a1)
+        a2 = self.layers[2].forward(s2)
+        h.append(s2)       # h8
+        h.append(a2)       # h9
+        s3 = self.layers[1].forward(h[5], a2)
+        a3 = self.layers[2].forward(s3)
+        h.append(s3)       # h10
+        h.append(a3)       # h11
+
+        h.append(self.layers[3].forward(a3))    # h12
+        h.append(self.layers[4].forward(h[12]))  # h13
+
+        if keep_state:
+            self.h = h
+
+        return h[-1]
+
+    def bprop(self, y):
+        d_h12 = self.layers[4].backward(y, self.h[13], self.h[12])
+        d_h11 = self.layers[3].backward(d_h12, self.h[12], self.h[11])
+
+        d_h10 = self.layers[2].backward(d_h11, self.h[11], self.h[10])
+        d_h5, d_h9 = self.layers[1].backward(d_h10, self.h[10], self.h[5], self.h[9])
+
+        #d_h8 = self.layers[2].backward(d_h9, self.h[9], self.h[8])
+        #d_h4, d_h7 = self.layers[1].backward(d_h8, self.h[8], self.h[4], self.h[7])
+
+        #d_h6 = self.layers[2].backward(d_h7, self.h[7], self.h[6])
+        #d_h3, _ = self.layers[1].backward(d_h6, self.h[6], self.h[3], self.s0)
+
+        #self.layers[0].backward(d_h3, self.h[3], self.h[0])
+        #self.layers[0].backward(d_h4, self.h[4], self.h[1])
+        self.layers[0].backward(d_h5, self.h[5], self.h[2])
+        return
+
+    def update(self, train_settings: uf.TrainSettings):
+        for layer_c in self.layers:
+            layer_c.update(train_settings)
         return
 
 

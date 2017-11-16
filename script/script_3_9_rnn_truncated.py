@@ -3,7 +3,7 @@
 import os
 import sys
 import src.load_data as load_data
-# from src import layer
+from src import layer
 import src.nlp as nlp
 import matplotlib.pyplot as plt
 import numpy
@@ -18,7 +18,6 @@ from src import train as utf
 full_path = os.path.realpath(__file__)
 path, filename = os.path.split(full_path)
 dump_filepath = '../output/dump'
-
 data_train_filename = 'train.dump'
 data_valid_filename = 'valid.dump'
 
@@ -40,37 +39,15 @@ y_valid = data_valid[:, 3]
 
 # set the random seed
 numpy.random.seed(1099)
-
-
-
 data_store_train = uf.DataStore(x_train, y_train)
 data_store_valid = uf.DataStore(x_valid, y_valid)
 
-
-
-
-train_settings = uf.TrainSettings(learning_rate=0.01, batch_size=512, momentum=0.9, plot_callback=cb.plot_callback,
-                                  loss_callback=cb.loss_callback, filename='script-3-2', epoch=200, prefix='h128')
+#############################
+train_settings = uf.TrainSettings(learning_rate=0.01, batch_size=16, momentum=0.0, plot_callback=cb.plot_callback,
+                                  loss_callback=cb.loss_callback, filename='script-3-9', epoch=100, prefix='e16')
 # build the neural network
-mynlp = nlp.NlpL3TypeA(dict_size=8000, embedding_size=16, hidden_units=128)
+mynlp = nlp.NlpL3TypeRC(dict_size=8000, embedding_size=16, hidden_units=128)
 utf.cross_train(mynlp, data_store_train, data_store_valid, train_settings)
-
-
-
-train_settings = uf.TrainSettings(learning_rate=0.01, batch_size=512, momentum=0.9, plot_callback=cb.plot_callback,
-                                  loss_callback=cb.loss_callback, filename='script-3-2', epoch=200, prefix='h256')
-# build the neural network
-mynlp = nlp.NlpL3TypeA(dict_size=8000, embedding_size=16, hidden_units=256)
-utf.cross_train(mynlp, data_store_train, data_store_valid, train_settings)
-
-
-
-train_settings = uf.TrainSettings(learning_rate=0.01, batch_size=512, momentum=0.9, plot_callback=cb.plot_callback,
-                                  loss_callback=cb.loss_callback, filename='script-3-2', epoch=200, prefix='h512')
-# build the neural network
-mynlp = nlp.NlpL3TypeA(dict_size=8000, embedding_size=16, hidden_units=512)
-utf.cross_train(mynlp, data_store_train, data_store_valid, train_settings)
-
 
 
 

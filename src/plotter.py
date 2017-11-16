@@ -76,7 +76,7 @@ def plot_perplexity(status_train: utf.Status, status_valid: utf.Status):
     except AttributeError:
         filename_suffix = 'perp'
     filename_extension = '.png'
-    filename = plot_file + '-' + filename_prefix + '-' + filename_suffix + filename_extension
+    filename = plot_file + '-' + filename_prefix + '-' + filename_suffix + '-perp' + filename_extension
     full_path = os.path.realpath(__file__)
     path, _ = os.path.split(full_path)
     savepath = os.path.join(path, '../output/perplexity', filename)
@@ -102,7 +102,7 @@ def plot_loss(status_train: utf.Status, status_valid: utf.Status):
     except AttributeError:
         filename_suffix = 'loss'
     filename_extension = '.png'
-    filename = plot_file + '-' + filename_prefix + '-' + filename_suffix + filename_extension
+    filename = plot_file + '-' + filename_prefix + '-' + filename_suffix + '-loss' + filename_extension
     full_path = os.path.realpath(__file__)
     path, _ = os.path.split(full_path)
     savepath = os.path.join(path, '../output/plot-loss', filename)

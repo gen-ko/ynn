@@ -415,7 +415,9 @@ class Embedding(Layer):
         Layer.__init__(self, input_dimension, output_dimension, name)
        # b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
         self.d_w = None
+      #  self.d_w_last = numpy.zeros(shape=(1,),dtype=numpy.float32)
         self.d_w_index = None
+        #self.d_w_index_last = numpy.zeros(shape=(1,),dtype=int)
        #self.w = numpy.random.uniform(low=-b, high=b, size=(input_dimension, output_dimension))
        #self.w = numpy.array(self.w, dtype=numpy.float32)
         self.w = numpy.random.normal(0.0, 1.0, size=(input_dimension, output_dimension)).astype(numpy.float32)
@@ -435,6 +437,7 @@ class Embedding(Layer):
 
     def update(self, train_settings: uf.TrainSettings):
         # batch_size = self.d_w_index.size
+        # self.w[self.d_w_index_last] -= train_settings.momentum * self.d_w
         self.w[self.d_w_index] -= train_settings.learning_rate * self.d_w
         self.d_w_index = None
         self.d_w = None
