@@ -3,6 +3,7 @@ import math
 from src import ytensor
 import warnings
 import src.util as uf
+from src.util.status import TrainSettings
 
 warnings.filterwarnings('error')
 
@@ -69,7 +70,7 @@ class Linear(Layer):
         d_bottom = numpy.dot(d_top, self.w.T)
         return d_bottom
 
-    def update(self, train_settings: uf.TrainSettings):
+    def update(self, train_settings: TrainSettings):
         regular = train_settings.l2 * 2.0
         momentum = train_settings.momentum
         learning_rate = train_settings.learning_rate
@@ -127,7 +128,7 @@ class Recursive(Layer):
         d_state = numpy.dot(d_top, self.whh.T)
         return d_bottom, d_state
 
-    def update(self, train_settings: uf.TrainSettings):
+    def update(self, train_settings: TrainSettings):
         regular = train_settings.l2 * 2.0
         momentum = train_settings.momentum
         learning_rate = train_settings.learning_rate
@@ -285,7 +286,7 @@ class Nonlinear(Layer):
     def forward(self, x):
         return self.activation(x)
 
-    def update(self, train_settings: uf.TrainSettings):
+    def update(self, train_settings: TrainSettings):
         return
 
 
@@ -435,7 +436,7 @@ class Embedding(Layer):
             self.d_w_index = h_in
         return
 
-    def update(self, train_settings: uf.TrainSettings):
+    def update(self, train_settings: TrainSettings):
         # batch_size = self.d_w_index.size
         # self.w[self.d_w_index_last] -= train_settings.momentum * self.d_w
         self.w[self.d_w_index] -= train_settings.learning_rate * self.d_w

@@ -1,39 +1,14 @@
 from src.network import NeuralNetwork
-import src.util as uf
+import src.util_functions as uf
 import numpy
-from src.util import DataStore
-from src.util import TrainSettings
+from src.util.status import DataStore
+from src.util.status import TrainSettings
+from src.util.status import Status
 import os
 import pickle
 
 
-class Status(object):
-    def __init__(self, train_settings: TrainSettings, data_store: DataStore, is_train: bool):
-        self.target_epoch = train_settings.epoch
-        self.current_epoch = 0
-        self.error: numpy.ndarray = numpy.zeros(shape=(self.target_epoch,), dtype=numpy.float32)
-        self.loss: numpy.ndarray = numpy.zeros(shape=(self.target_epoch,), dtype=numpy.float32)
-        self.perplexity: numpy.ndarray = None
-        self.soft_prob: numpy.ndarray = None
-        self.predict: numpy.ndarray = None
-        self.x_batch: numpy.ndarray = None
-        self.y_batch: numpy.ndarray = None
-        self.size: int = data_store.size
-        self.is_train: bool = is_train
-        self.train_settings: TrainSettings = train_settings
-        self.data_store: DataStore = data_store
-        if self.is_train:
-            self.batch_size = self.train_settings.batch_size
-            self.draw_batch = self.draw_batch_train
-        else:
-            self.batch_size = self.size
-            self.draw_batch = self.draw_direct
 
-    def draw_batch_train(self):
-        return self.data_store.draw_batch(self.batch_size)
-
-    def draw_direct(self):
-        return self.data_store.draw_direct()
 
 
 
@@ -69,7 +44,7 @@ def cross_train(nn: NeuralNetwork, data_store_train: DataStore, data_store_valid
         if iteration(nn, status_train):
             iteration(nn, status_valid)
             print_log(status_train, status_valid)
-            if status_train.current_epoch % 20 == 19:
+            if status_train.current_epoch % 3 == 2:
                 train_settings.plot_callback(status_train, status_valid)
             status_train.current_epoch += 1
             status_valid.current_epoch += 1

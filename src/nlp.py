@@ -1,15 +1,8 @@
 import numpy
-import pickle
 from src import layer
-import os
-from time import gmtime, strftime
-import matplotlib.pyplot as plt
-from src import util as uf
 from src import network as nn
-from src import plotter
 
-name_pool = layer.name_pool
-
+'''
 class NlpGeneral(nn.NeuralNetwork):
     def __init__(self, layers: [layer.Layer], connections: dict):
         nn.NeuralNetwork.__init__(self, layers, connections)
@@ -80,10 +73,6 @@ class NlpGeneral(nn.NeuralNetwork):
                                                                  self.h_out[self.output_layer],
                                                                  self.h_in[self.output_layer])
 
-
-
-
-
         d_h3 = self.layer3.backward(y, self.h4, self.h3)
         d_h2 = self.layer2.backward(d_h3, self.h3, self.h2)
         # the gradiants of h2 is the same as h2_0, h2_1 and h2_2, which can be derived
@@ -152,7 +141,7 @@ class NlpGeneral(nn.NeuralNetwork):
                   '\t',
                   sep='')
         return
-
+'''
 
 
 
@@ -316,6 +305,8 @@ class NlpL3TypeRC(nn.NeuralNetwork):
                        layer.Linear(hidden_units, dict_size, 'l3-L'),
                        layer.Softmax(dict_size, 'l4-Softmax')]
         self.h: list = None
+        if __debug__:
+            print('DEBUG MODE ENABLED')
         return
 
     def fprop(self, x, keep_state: bool=False):
@@ -367,13 +358,13 @@ class NlpL3TypeRC(nn.NeuralNetwork):
         #self.layers[0].backward(d_h4, self.h[4], self.h[1])
         self.layers[0].backward(d_h5, self.h[5], self.h[2])
         return
-
+'''
     def update(self, train_settings: uf.TrainSettings):
         for layer_c in self.layers:
             layer_c.update(train_settings)
         return
 
-
+'''
 
 
 

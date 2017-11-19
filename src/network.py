@@ -1,19 +1,3 @@
-import numpy
-import pickle
-from src import layer
-import os
-from time import gmtime, strftime
-import matplotlib.pyplot as plt
-from src import util as uf
-
-
-
-# initialize the neural network constructor before using
-def init_nn(random_seed=1099):
-    # set a random seed to ensure the consistence between different runs
-    numpy.random.RandomState(seed=random_seed)
-    return
-
 
 class NeuralNetwork(object):
     def fprop(self, *args):
@@ -28,7 +12,7 @@ class NeuralNetwork(object):
     def plot_callback(self, *args):
         raise ValueError('Calling a virtual function')
 
-    def update(self, train_settings: uf.TrainSettings):
+    def update(self, train_settings):
         for layer_c in self.layers:
             layer_c.update(train_settings)
         return
@@ -44,7 +28,8 @@ class NeuralNetwork(object):
             layer_c.load(dump_obj.pop(0))
         return
 
-
+# TODO: refactor the NeuralNetwork class
+'''
 class NeuralNetwork_Dumpable(object):
     def __init__(self, layers: [layer.Layer], learning_rate=0.01, regularizer=0.0001, debug=False,
                  momentum=0.9):
@@ -125,6 +110,6 @@ class NeuralNetwork_Dumpable(object):
         valid_score = numpy.sum(y_predict == y_valid)
         self.valid_loss[epoch] /= y_valid.shape[0]
         self.valid_error[epoch] = 1.0 - valid_score / y_valid.shape[0]
-
+'''
 
 

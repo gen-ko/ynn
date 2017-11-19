@@ -1,5 +1,4 @@
 import numpy
-import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import os
 from src import util as uf

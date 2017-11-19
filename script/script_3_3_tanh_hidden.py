@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import numpy
 import os
 import pickle
+from src.util.status import DataStore
+from src.util.status import TrainSettings
 from src import util as uf
 from src import callback as cb
 from src import train as utf
@@ -39,11 +41,11 @@ y_valid = data_valid[:, 3]
 
 # set the random seed
 numpy.random.seed(1099)
-data_store_train = uf.DataStore(x_train, y_train)
-data_store_valid = uf.DataStore(x_valid, y_valid)
+data_store_train = DataStore(x_train, y_train)
+data_store_valid = DataStore(x_valid, y_valid)
 
 
-train_settings = uf.TrainSettings(learning_rate=0.1, batch_size=512, momentum=0.0, plot_callback=cb.plot_callback,
+train_settings = TrainSettings(learning_rate=0.1, batch_size=512, momentum=0.0, plot_callback=cb.plot_callback,
                                   loss_callback=cb.loss_callback, filename='script-3-3', epoch=100, prefix='h128')
 # build the neural network
 mynlp = nlp.NlpL3TypeB(dict_size=8000, embedding_size=16, hidden_units=128)

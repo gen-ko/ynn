@@ -1,47 +1,26 @@
 import numpy
-from scipy.stats import entropy
 
-def cross_entropy_loss(predict_prob: numpy.ndarray, y_label: numpy.ndarray, take_average: bool = False) -> float:
-    loss = 0.0
-    batch_size = predict_prob.shape[0]
-    for i in range(y_label.size):
-        try:
-            loss += -numpy.log(predict_prob[i, y_label[i]])
-        except:
-            raise ValueError('Cross Entropy Loss Overflowing')
-    if take_average:
-        loss /= batch_size
-    return loss
-
-
-def pick_class(softprob: numpy.ndarray) -> numpy.ndarray:
-    classes = numpy.argmax(softprob, axis=1)
-    return classes
-
-
-def shuffle(x, y) -> (numpy.ndarray, numpy.ndarray):
-    shuffle_idx = numpy.arange(y.size)
-    numpy.random.shuffle(shuffle_idx)
-    x = x[shuffle_idx]
-    y = y[shuffle_idx]
-    return x, y
-
-
-def predict_score(predict_label: numpy.ndarray, y_label: numpy.ndarray, take_average: bool = False) -> float:
-    tmp: float = numpy.sum(predict_label == y_label).astype(float)
-    if take_average:
-        tmp /= y_label.size
-    return tmp
-
-
-def perplexity(prob_distribution: numpy.ndarray) -> float:
-    tmp = entropy(prob_distribution.T)
-    tmp = numpy.power(2, tmp)
-    return numpy.sum(tmp)
-
-
-
-
+class TrainSettings(object):
+    def __init__(self, learning_rate=0.01, momentum=0.0, l2=0.0, l1=0.0, dropout=0.0,
+                 epoch=200, batch_size=64, auto_stop=False, auto_plot=False, auto_visualize=False,
+                 plot_callback=None, loss_callback=None, filename='f', prefix='p', infix='i', suffix='s'):
+        self.learning_rate = learning_rate
+        self.momentum = momentum
+        self.l2: float = l2
+        self.l1: float = l1
+        self.dropout = dropout
+        self.epoch = epoch
+        self.batch_size = batch_size
+        self.auto_stop = auto_stop
+        self.auto_plot = auto_plot
+        self.auto_visualize = auto_visualize
+        self.plot_callback = plot_callback
+        self.loss_callback = loss_callback
+        self.filename = filename
+        self.prefix = prefix
+        self.infix = infix
+        self.suffix = suffix
+        return
 
 class DataStore(object):
     def __init__(self, x: numpy.ndarray, y: numpy.ndarray=None):
@@ -132,34 +111,33 @@ class DataStore(object):
     def draw_direct_x(self, *args) -> (bool, numpy.ndarray):
         return True, self.x
 
+class Status(object):
+    def __init__(self, train_settings: TrainSettings, data_store: DataStore, is_train: bool):
+        self.target_epoch = train_settings.epoch
+        self.current_epoch = 0
+        self.error: numpy.ndarray = numpy.zeros(shape=(self.target_epoch,), dtype=numpy.float32)
+        self.loss: numpy.ndarray = numpy.zeros(shape=(self.target_epoch,), dtype=numpy.float32)
+        self.perplexity: numpy.ndarray = None
+        self.soft_prob: numpy.ndarray = None
+        self.predict: numpy.ndarray = None
+        self.x_batch: numpy.ndarray = None
+        self.y_batch: numpy.ndarray = None
+        self.size: int = data_store.size
+        self.is_train: bool = is_train
+        self.train_settings: TrainSettings = train_settings
+        self.data_store: DataStore = data_store
+        if self.is_train:
+            self.batch_size = self.train_settings.batch_size
+            self.draw_batch = self.draw_batch_train
+        else:
+            self.batch_size = self.size
+            self.draw_batch = self.draw_direct
 
-class TrainSettings(object):
-    def __init__(self, learning_rate=0.01, momentum=0.0, l2=0.0, l1=0.0, dropout=0.0,
-                 epoch=200, batch_size=64, auto_stop=False, auto_plot=False, auto_visualize=False,
-                 plot_callback=None, loss_callback=None, filename='f', prefix='p', infix='i', suffix='s'):
-        self.learning_rate = learning_rate
-        self.momentum = momentum
-        self.l2: float = l2
-        self.l1: float = l1
-        self.dropout = dropout
-        self.epoch = epoch
-        self.batch_size = batch_size
-        self.auto_stop = auto_stop
-        self.auto_plot = auto_plot
-        self.auto_visualize = auto_visualize
-        self.plot_callback = plot_callback
-        self.loss_callback = loss_callback
-        self.filename = filename
-        self.prefix = prefix
-        self.infix = infix
-        self.suffix = suffix
-        return
+    def draw_batch_train(self):
+        return self.data_store.draw_batch(self.batch_size)
 
-
-
-
-
-
+    def draw_direct(self):
+        return self.data_store.draw_direct()
 
 
 
