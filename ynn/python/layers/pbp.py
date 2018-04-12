@@ -2,8 +2,6 @@ import numpy
 import math
 from src import ytensor
 import warnings
-import src.util as uf
-from src.util.status import TrainSettings
 
 warnings.filterwarnings('error')
 
@@ -11,7 +9,7 @@ name_pool: dict = {}
 
 
 class Layer(object):
-    def __init__(self, input_dimension, output_dimension, name: str='Base'):
+    def __init__(self, input_dimension, output_dimension, name: str = 'Base'):
         self.id = name_pool.__sizeof__()
         if name in name_pool:
             name_num = name_pool.__sizeof__()
@@ -48,7 +46,7 @@ class Linear(Layer):
         Layer.__init__(self, input_dimension, output_dimension, name)
         wi = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
         self.w = numpy.random.uniform(low=-wi, high=wi, size=(input_dimension, output_dimension)).astype(numpy.float32)
-        self.b = numpy.zeros((output_dimension, ), dtype=numpy.float32)
+        self.b = numpy.zeros((output_dimension,), dtype=numpy.float32)
         self.delta_w = numpy.zeros(shape=self.w.shape, dtype=numpy.float32)
         self.delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float32)
         self.d_w = numpy.zeros(self.w.shape, dtype=numpy.float32)
@@ -62,7 +60,7 @@ class Linear(Layer):
         batch_size = d_top.shape[0]
         self.d_w = numpy.tensordot(h_bottom, d_top, axes=(0, 0))
         self.d_b = numpy.sum(d_top, axis=0)
-        #for i in range(batch_size):
+        # for i in range(batch_size):
         #    self.d_w += numpy.outer(h_in[i], d_a[i])
         #    self.d_b += d_a[i]
         self.d_w /= batch_size
@@ -98,53 +96,49 @@ class Linear(Layer):
 class ProbabilisticGaussianLinear(Layer):
     def __init__(self, input_dimension, output_dimension, name: str = 'ProbabilisticGaussianLinear'):
         Layer.__init__(self, input_dimension, output_dimension, name)
-        
+
         # lambda is a global prior to weights
         self.alpha_0_gamma = 6.0
         self.beta_0_gamma = 6.0
-        self.gamma = numpy.random.gamma(shape=6.0, scale=1/6.0, size=()).item()
-        self.lam = numpy.random.gamma(shape=6.0, scale=1/6.0, size=()).item()
+        self.gamma = numpy.random.gamma(shape=6.0, scale=1 / 6.0, size=()).item()
+        self.lam = numpy.random.gamma(shape=6.0, scale=1 / 6.0, size=()).item()
         self.scale = 1.0 / self.lam
-        
-        self.w_mean = numpy.zeros(shape=(input_dimension, output_dimension), dtype=numpy.float32)
-        self.w_var  = numpy.random.normal(loc=0.0, scale=self.lam, size=(self,input_dimension, self.output_dimension))
-        self.b_mean = numpy.zeros(shape=(output_dimension, ), dtype=numpy.float32)
-        self.b_var  = numpy.random.normal(loc=0.0, scale=self.lam, size=(self.output_dimension, ))
-        
+
+        #  W :  include bias  V_l x (V_{l-1} + 1)
+        self.w_mean = numpy.zeros(shape=(input_dimension + 1, output_dimension), dtype=numpy.float32)
+        self.w_var = numpy.random.normal(loc=0.0, scale=self.lam, size=(input_dimension + 1, self.output_dimension))
+
         self.delta_w_mean = numpy.zeros(shape=self.w_mean.shape, dtype=numpy.float32)
         self.delta_w_var = numpy.zeros(shape=self.w_var.shape, dtype=numpy.float32)
-        self.delta_b_mean = numpy.zeros(shape=self.b_mean.shape, dtype=numpy.float32)
-        self.delta_b_var = numpy.zeros(shape=self.b_var.shape, dtype=numpy.float32)
-        
+
         self.d_w_mean = numpy.zeros(self.w_mean.shape, dtype=numpy.float32)
-        self.d_w_var  = numpy.zeros(self.w_var.shape, dtype=numpy.float32)
-        self.d_b_mean = numpy.zeros(self.b_mean.shape, dtype=numpy.float32)
-        self.d_b_var  = numpy.zeros(self.b_var.shape, dtype=numpy.float32)
+        self.d_w_var = numpy.zeros(self.w_var.shape, dtype=numpy.float32)
         return
-        
+
     @property
     def w(self):
-        return numpy.random.normal(loc=self.w_mean, scale=self.w_var, size=(self.input_dimension, self.output_dimension))
-    
+        return numpy.random.normal(loc=self.w_mean, scale=self.w_var,
+                                   size=(self.input_dimension, self.output_dimension))
+
     @property
     def b(self):
-        return numpy.random.normal(loc=self.b_mean, scale=self.b_var, size=(self.output_dimension, ))
+        return numpy.random.normal(loc=self.b_mean, scale=self.b_var, size=(self.output_dimension,))
 
     def forward(self, x):
         return numpy.dot(x, self.w) + self.b
-    
+
     def forward_proba(self, x_mean, x_var):
         y_mean = numpy.dot(x_mean, self.w_mean) + self.b_mean / numpy.sqrt(float(self.input_dimension + 1))
-        y_var  = numpy.dot(x_var, self.w_mean * self.w_mean) + self.w_var + self.b_var
+        y_var = numpy.dot(x_var, self.w_mean * self.w_mean) + self.w_var + self.b_var
         return y_mean, y_var
-    
+
     def backward(self, d_top_mean, d_top_var, h_top_mean, h_top_var, h_bottom_mean, h_bottom_var):
         self.d_w_mean = self.w_var + self.d_z_w_mean
-        self.d_w_var  = - self.w_var * self.w_var * (self.d_z_w_mean * self.d_z_w_mean - 2 * self.d_z_w_var) 
+        self.d_w_var = - self.w_var * self.w_var * (self.d_z_w_mean * self.d_z_w_mean - 2 * self.d_z_w_var)
         self.d_b_mean = self.b_var + self.d_z_b_mean
-        self.d_b_var  = - self.z_var * self.z_var * (self.d_z_b_mean * self.d_z_b_mean - 2 * self.d_z_b_var)
+        self.d_b_var = - self.z_var * self.z_var * (self.d_z_b_mean * self.d_z_b_mean - 2 * self.d_z_b_var)
         return
-        
+
     def update(self, train_settings: TrainSettings):
         regular = train_settings.l2 * 2.0
         momentum = train_settings.momentum
@@ -153,7 +147,7 @@ class ProbabilisticGaussianLinear(Layer):
         tmp = self.d_w_mean + regular * self.w_mean
         self.delta_w_mean = -learning_rate * tmp + momentum * self.delta_w_mean
         self.w_mean += self.delta_w_mean
-        
+
         tmp = self.d_w_var + regular * self.w_var
         self.delta_w_var = -learning_rate * tmp + momentum * self.delta_w_var
         self.w_var += self.delta_w_var
@@ -161,25 +155,27 @@ class ProbabilisticGaussianLinear(Layer):
         tmp = self.d_b_mean
         self.delta_b_mean = -learning_rate * tmp + momentum * self.delta_b_mean
         self.b_mean += self.delta_b_mean
-        
+
         tmp = self.d_b_var
         self.delta_b_var = -learning_rate * tmp + momentum * self.delta_b_var
         self.b_var += self.delta_b_var
-        
+
         self.d_w_mean = numpy.zeros(self.w_mean.shape)
         self.d_w_var = numpy.zeros(self.w_var.shape)
         self.d_b_mean = numpy.zeros(self.b_mean.shape)
         self.d_b_var = numpy.zeros(self.b_var.shape)
         return
-        
-    
+
+
 # vanilla RNN
 class Recursive(Layer):
     def __init__(self, input_dimension, output_dimension, name: str = 'Recursive'):
         Layer.__init__(self, input_dimension, output_dimension, name)
         wi = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
-        self.wxh = numpy.random.uniform(low=-wi, high=wi, size=(input_dimension, output_dimension)).astype(numpy.float32)
-        self.whh = numpy.random.uniform(low=-wi, high=wi, size=(output_dimension,output_dimension)).astype(numpy.float32)
+        self.wxh = numpy.random.uniform(low=-wi, high=wi, size=(input_dimension, output_dimension)).astype(
+            numpy.float32)
+        self.whh = numpy.random.uniform(low=-wi, high=wi, size=(output_dimension, output_dimension)).astype(
+            numpy.float32)
         self.b = numpy.zeros((output_dimension,), dtype=numpy.float32)
         self.delta_wxh = numpy.zeros(shape=self.wxh.shape, dtype=numpy.float32)
         self.delta_whh = numpy.zeros(shape=self.whh.shape, dtype=numpy.float32)
@@ -251,9 +247,9 @@ class RBM(Layer):
         tmp = numpy.dot(self.w, x)
         tmp += self.h_bias
 
-        #tmp = numpy.clip(tmp, -500.0, 500.0)
-        #tmp = numpy.exp(-tmp) + 1
-        #tmp = numpy.reciprocal(tmp)
+        # tmp = numpy.clip(tmp, -500.0, 500.0)
+        # tmp = numpy.exp(-tmp) + 1
+        # tmp = numpy.reciprocal(tmp)
         tmp = ytensor.sigmoid(tmp)
         return tmp
 
@@ -281,9 +277,9 @@ class RBM(Layer):
         tmp = numpy.dot(self.w.T, h)
         tmp += self.x_bias
 
-        #tmp = numpy.clip(tmp, -500.0, 500.0)
-        #tmp = numpy.exp(-tmp) + 1
-        #tmp = numpy.reciprocal(tmp)
+        # tmp = numpy.clip(tmp, -500.0, 500.0)
+        # tmp = numpy.exp(-tmp) + 1
+        # tmp = numpy.reciprocal(tmp)
         tmp = ytensor.sigmoid(tmp)
         return tmp
 
@@ -296,8 +292,8 @@ class RBM(Layer):
 class AutoEncoder(Layer):
     def __init__(self, input_dimension, output_dimension):
         Layer.__init__(self, input_dimension, output_dimension)
-        #b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
-        #self.w = numpy.random.uniform(low=-b, high=b, size=(output_dimension, input_dimension))
+        # b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
+        # self.w = numpy.random.uniform(low=-b, high=b, size=(output_dimension, input_dimension))
         self.w = numpy.random.normal(0, 0.1, (output_dimension, input_dimension))
         self.h_bias = numpy.zeros(shape=(output_dimension, 1), dtype=numpy.float64)
         self.x_bias = numpy.zeros(shape=(input_dimension, 1), dtype=numpy.float64)
@@ -342,8 +338,6 @@ class Dropout(Layer):
 
     def backward(self, *args):
         return args
-
-
 
 
 class Nonlinear(Layer):
@@ -428,7 +422,6 @@ class Softmax(Layer):
         return
 
 
-
 class BN(Layer):
     def __init__(self, in_dim, out_dim):
         Layer.__init__(self, in_dim, out_dim)
@@ -441,9 +434,8 @@ class BN(Layer):
         self.g_g = 0.0
         self.g_b = 0.0
 
-        self.x_hat : numpy.ndarray
+        self.x_hat: numpy.ndarray
         self.ivar = 0.0
-
 
     def forward(self, x):
         D, N = x.shape
@@ -460,13 +452,11 @@ class BN(Layer):
         return out.T
 
     def backward(self, g_h, h_out, h_in):
-
         # get the dimensions of the input/output
         D, N = g_h.shape
         dout = g_h.T
         x_hat = self.x_hat
         inv_var = self.ivar
-
 
         dxhat = dout * self.gamma
         tmp1 = (1. / N) * self.ivar
@@ -493,13 +483,13 @@ class BN(Layer):
 class Embedding(Layer):
     def __init__(self, input_dimension, output_dimension, name: str = 'Embedding'):
         Layer.__init__(self, input_dimension, output_dimension, name)
-       # b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
+        # b = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
         self.d_w = None
-      #  self.d_w_last = numpy.zeros(shape=(1,),dtype=numpy.float32)
+        #  self.d_w_last = numpy.zeros(shape=(1,),dtype=numpy.float32)
         self.d_w_index = None
-        #self.d_w_index_last = numpy.zeros(shape=(1,),dtype=int)
-       #self.w = numpy.random.uniform(low=-b, high=b, size=(input_dimension, output_dimension))
-       #self.w = numpy.array(self.w, dtype=numpy.float32)
+        # self.d_w_index_last = numpy.zeros(shape=(1,),dtype=int)
+        # self.w = numpy.random.uniform(low=-b, high=b, size=(input_dimension, output_dimension))
+        # self.w = numpy.array(self.w, dtype=numpy.float32)
         self.w = numpy.random.normal(0.0, 1.0, size=(input_dimension, output_dimension)).astype(numpy.float32)
 
     def forward(self, x):
@@ -515,7 +505,7 @@ class Embedding(Layer):
             self.d_w_index = h_in
         return
 
-    def update(self, train_settings: TrainSettings):
+    def update(self, train_settings):
         # batch_size = self.d_w_index.size
         # self.w[self.d_w_index_last] -= train_settings.momentum * self.d_w
         self.w[self.d_w_index] -= train_settings.learning_rate * self.d_w
