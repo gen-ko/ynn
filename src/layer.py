@@ -96,80 +96,54 @@ class Linear(Layer):
 
 
 class ProbabilisticGaussianLinear(Layer):
-    def __init__(self, input_dimension, output_dimension, name: str = 'ProbabilisticGaussianLinear'):
+    def __init__(self, input_dimension, output_dimension, name: str = 'Linear'):
         Layer.__init__(self, input_dimension, output_dimension, name)
-        
-        # lambda is a global prior to weights
-        self.alpha_0_gamma = 6.0
-        self.beta_0_gamma = 6.0
-        self.gamma = numpy.random.gamma(shape=6.0, scale=1/6.0, size=()).item()
-        self.lam = numpy.random.gamma(shape=6.0, scale=1/6.0, size=()).item()
-        self.scale = 1.0 / self.lam
-        
-        self.w_mean = numpy.zeros(shape=(input_dimension, output_dimension), dtype=numpy.float32)
-        self.w_var  = numpy.random.normal(loc=0.0, scale=self.lam, size=(self,input_dimension, self.output_dimension))
-        self.b_mean = numpy.zeros(shape=(output_dimension, ), dtype=numpy.float32)
-        self.b_var  = numpy.random.normal(loc=0.0, scale=self.lam, size=(self.output_dimension, ))
-        
-        self.delta_w_mean = numpy.zeros(shape=self.w_mean.shape, dtype=numpy.float32)
-        self.delta_w_var = numpy.zeros(shape=self.w_var.shape, dtype=numpy.float32)
-        self.delta_b_mean = numpy.zeros(shape=self.b_mean.shape, dtype=numpy.float32)
-        self.delta_b_var = numpy.zeros(shape=self.b_var.shape, dtype=numpy.float32)
-        
-        self.d_w_mean = numpy.zeros(self.w_mean.shape, dtype=numpy.float32)
-        self.d_w_var  = numpy.zeros(self.w_var.shape, dtype=numpy.float32)
-        self.d_b_mean = numpy.zeros(self.b_mean.shape, dtype=numpy.float32)
-        self.d_b_var  = numpy.zeros(self.b_var.shape, dtype=numpy.float32)
-        return
-        
-    @property
-    def w(self):
-        return numpy.random.normal(loc=self.w_mean, scale=self.w_var, size=(self.input_dimension, self.output_dimension))
-    
-    @property
-    def b(self):
-        return numpy.random.normal(loc=self.b_mean, scale=self.b_var, size=(self.output_dimension, ))
+        wi = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
+        self.w = numpy.random.uniform(low=-wi, high=wi, size=(input_dimension, output_dimension)).astype(numpy.float32)
+        self.b = numpy.zeros((output_dimension, ), dtype=numpy.float32)
+        self.delta_w = numpy.zeros(shape=self.w.shape, dtype=numpy.float32)
+        self.delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float32)
+        self.d_w = numpy.zeros(self.w.shape, dtype=numpy.float32)
+        self.d_b = numpy.zeros(self.b.shape, dtype=numpy.float32)
 
     def forward(self, x):
-        return numpy.dot(x, self.w) + self.b
-    
-    def forward_proba(self, x_mean, x_var):
-        y_mean = numpy.dot(x_mean, self.w_mean) + self.b_mean / numpy.sqrt(float(self.input_dimension + 1))
-        y_var  = numpy.dot(x_var, self.w_mean * self.w_mean) + self.w_var + self.b_var
-        return y_mean, y_var
-    
-    def backward(self, d_top_mean, d_top_var, h_top_mean, h_top_var, h_bottom_mean, h_bottom_var):
-        self.d_w_mean = self.w_var + self.d_z_w_mean
-        self.d_w_var  = - self.w_var * self.w_var * (self.d_z_w_mean * self.d_z_w_mean - 2 * self.d_z_w_var) 
-        self.d_b_mean = self.b_var + self.d_z_b_mean
-        self.d_b_var  = - self.z_var * self.z_var * (self.d_z_b_mean * self.d_z_b_mean - 2 * self.d_z_b_var)
-        return
-        
+        return numpy.dot(x, (self.w + numpy.random.normal(loc=0.0, scale=1.0, size=self.w.shape))) + self.b
+
+    def backward(self, d_top, h_top, h_bottom):
+        # slow, 5s
+        batch_size = d_top.shape[0]
+        self.d_w = numpy.tensordot(h_bottom, d_top, axes=(0, 0))
+        self.d_b = numpy.sum(d_top, axis=0)
+        #for i in range(batch_size):
+        #    self.d_w += numpy.outer(h_in[i], d_a[i])
+        #    self.d_b += d_a[i]
+        self.d_w /= batch_size
+        self.d_b /= batch_size
+        d_bottom = numpy.dot(d_top, self.w.T)
+        return d_bottom
+
     def update(self, train_settings: TrainSettings):
         regular = train_settings.l2 * 2.0
         momentum = train_settings.momentum
         learning_rate = train_settings.learning_rate
 
-        tmp = self.d_w_mean + regular * self.w_mean
-        self.delta_w_mean = -learning_rate * tmp + momentum * self.delta_w_mean
-        self.w_mean += self.delta_w_mean
-        
-        tmp = self.d_w_var + regular * self.w_var
-        self.delta_w_var = -learning_rate * tmp + momentum * self.delta_w_var
-        self.w_var += self.delta_w_var
+        tmp = self.d_w + regular * self.w
+        self.delta_w = -learning_rate * tmp + momentum * self.delta_w
+        self.w += self.delta_w
 
-        tmp = self.d_b_mean
-        self.delta_b_mean = -learning_rate * tmp + momentum * self.delta_b_mean
-        self.b_mean += self.delta_b_mean
-        
-        tmp = self.d_b_var
-        self.delta_b_var = -learning_rate * tmp + momentum * self.delta_b_var
-        self.b_var += self.delta_b_var
-        
-        self.d_w_mean = numpy.zeros(self.w_mean.shape)
-        self.d_w_var = numpy.zeros(self.w_var.shape)
-        self.d_b_mean = numpy.zeros(self.b_mean.shape)
-        self.d_b_var = numpy.zeros(self.b_var.shape)
+        tmp = self.d_b
+        self.delta_b = -learning_rate * tmp + momentum * self.delta_b
+        self.b += self.delta_b
+        self.d_w = numpy.zeros(self.w.shape)
+        self.d_b = numpy.zeros(self.b.shape)
+        return
+
+    def dump(self):
+        return [self.w, self.b]
+
+    def load(self, blob):
+        self.w = blob[0]
+        self.b = blob[1]
         return
         
     
