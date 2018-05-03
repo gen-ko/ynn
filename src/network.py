@@ -45,6 +45,7 @@ class MLP(NeuralNetwork):
     def fprop(self, x, keep_state: bool=False):
         h = [x]
         hi = x
+        # h: 0, 1, ..., L, L+1
         for layer in self.layers:
             hi = layer.forward(hi)
             h.append(hi)
@@ -52,26 +53,11 @@ class MLP(NeuralNetwork):
             self.h = h
         return h[-1]
 
-    # assuming
-    def bprop(self, loss, grad_loss = ):
-        d = [y]
+    # assuming the loss function is cross-entropy
+    def bprop(self, y):
         di = y
-        for layer, hi in reversed(zip(self.layers, self.h)):
-            di = layer.backward(di, self.h)
-
-        d_h12 = self.layers[4].backward(y, self.h[13], self.h[12])
-        d_h11 = self.layers[3].backward(d_h12, self.h[12], self.h[11])
-
-        d_h10 = self.layers[2].backward(d_h11, self.h[11], self.h[10])
-        d_h5, d_h9 = self.layers[1].backward(d_h10, self.h[10], self.h[5], self.h[9])
-
-        #d_h8 = self.layers[2].backward(d_h9, self.h[9], self.h[8])
-        #d_h4, d_h7 = self.layers[1].backward(d_h8, self.h[8], self.h[4], self.h[7])
-
-        #d_h6 = self.layers[2].backward(d_h7, self.h[7], self.h[6])
-        #d_h3, _ = self.layers[1].backward(d_h6, self.h[6], self.h[3], self.s0)
-
-        #self.layers[0].backward(d_h3, self.h[3], self.h[0])
-        #self.layers[0].backward(d_h4, self.h[4], self.h[1])
-        self.layers[0].backward(d_h5, self.h[5], self.h[2])
+        nlayers = len(self.layers)
+        for i in reversed(range(nlayers)):
+            layer = self.layers[i]
+            di = layer.backward(di, self.h[i+1], self.h[i])
         return
