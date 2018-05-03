@@ -1,11 +1,8 @@
 import numpy
 import math
-from src import ytensor
-import warnings
-import src.util as uf
 from src.util.status import TrainSettings
 
-warnings.filterwarnings('error')
+# warnings.filterwarnings('error')
 
 name_pool: dict = {}
 
@@ -99,12 +96,15 @@ class ProbabilisticGaussianLinear(Layer):
     def __init__(self, input_dimension, output_dimension, name: str = 'Linear'):
         Layer.__init__(self, input_dimension, output_dimension, name)
         wi = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
-        self.w = numpy.random.uniform(low=-wi, high=wi, size=(input_dimension, output_dimension)).astype(numpy.float32)
+        self.w = 0
         self.b = numpy.zeros((output_dimension, ), dtype=numpy.float32)
         self.delta_w = numpy.zeros(shape=self.w.shape, dtype=numpy.float32)
         self.delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float32)
         self.d_w = numpy.zeros(self.w.shape, dtype=numpy.float32)
         self.d_b = numpy.zeros(self.b.shape, dtype=numpy.float32)
+
+        self.w_loc =  numpy.random.uniform(low=-wi, high=wi, size=(input_dimension, output_dimension)).astype(numpy.float32)
+
 
     def forward(self, x):
         return numpy.dot(x, (self.w + numpy.random.normal(loc=0.0, scale=1.0, size=self.w.shape))) + self.b
@@ -228,7 +228,7 @@ class RBM(Layer):
         #tmp = numpy.clip(tmp, -500.0, 500.0)
         #tmp = numpy.exp(-tmp) + 1
         #tmp = numpy.reciprocal(tmp)
-        tmp = ytensor.sigmoid(tmp)
+        tmp = 1.0 / (1 + numpy.exp(-x))
         return tmp
 
     def sample_h_given_x(self, x):
@@ -258,7 +258,7 @@ class RBM(Layer):
         #tmp = numpy.clip(tmp, -500.0, 500.0)
         #tmp = numpy.exp(-tmp) + 1
         #tmp = numpy.reciprocal(tmp)
-        tmp = ytensor.sigmoid(tmp)
+        tmp = 1 / (1 + numpy.exp(-tmp))
         return tmp
 
     def update(self, delta_w, delta_h_bias, delta_x_bias, learning_rate):
@@ -331,9 +331,9 @@ class Nonlinear(Layer):
     def derivative(self, h):
         raise ValueError('Calling a virtual function')
 
-    def backward(self, d_h_out, h_out, h_in):
-        deri = self.derivative(h_out)
-        d_h_in = numpy.multiply(d_h_out, deri)
+    def backward(self, d_top, h_top, h_bottom):
+        deri = self.derivative(h_top)
+        d_h_in = numpy.multiply(d_top, deri)
         return d_h_in
 
     def forward(self, x):
@@ -392,7 +392,10 @@ class Softmax(Layer):
         tmp /= tmp2
         return tmp.T
 
-    def backward(self, y, h_out, h_in):
+    def backward(self, d_top, h_top, h_bottom):
+        y = d_top
+        h_out = h_top
+        h_in = h_bottom
         batch_size = h_out.shape[0]
         for i in range(batch_size):
             h_out[i, y[i]] -= 1.0

@@ -1,15 +1,10 @@
 # required python version: 3.6+
 
 import os
-import sys
-import src.load_data as load_data
-from src import plotter
 from src import layer
-from src.network import NeuralNetwork_Dumpable as NN
-import src.network as network
-import matplotlib.pyplot as plt
+from src.network import DNN
 import numpy
-import os
+import tensorflow as tf
 
 #  format of data
 # disitstrain.txt contains 3000 lines, each line 785 numbers, comma delimited
@@ -21,14 +16,13 @@ data_train_filename = 'digitstrain.txt'
 data_valid_filename = 'digitsvalid.txt'
 data_test_filename = 'digitstest.txt'
 
-data_train_filepath = os.path.join(path, data_filepath, data_train_filename)
-data_valid_filepath = os.path.join(path, data_filepath, data_valid_filename)
-data_test_filepath = os.path.join(path, data_filepath, data_test_filename)
 
 
-# x range [0, 1]
-x_train, y_train = load_data.load_from_path(data_train_filepath)
-x_valid, y_valid = load_data.load_from_path(data_valid_filepath)
+mnist = tf.contrib.learn.datasets.load_dataset("mnist")
+
+
+
+
 
 # warm-up phase
 '''
@@ -45,8 +39,12 @@ plt.show()
 '''
 #l1 = Layer(784, 100, 10)
 print("start initiliazing...")
-network.init_nn(random_seed=1099)
+# network.init_nn(random_seed=1099)
+x_train = mnist.train.images # 55000 x 784
+x_valid = mnist.validation.images # 5000 x 784
 
+y_train = mnist.train.labels
+y_valid = mnist.validation.labels
 
 layers = [layer.Linear(784, 100),
           #layer.BN(100, 100),
@@ -54,7 +52,7 @@ layers = [layer.Linear(784, 100),
           layer.Linear(100, 10),
           layer.Softmax(10)]
 
-myNN = NN(layers, learning_rate=0.01, momentum=0.90, regularizer=0.0001)
+myNN = DNN(layers, learning_rate=0.01, momentum=0.90, regularizer=0.0001)
 
 myNN.train(x_train, y_train, x_valid, y_valid, epoch=300, batch_size=64)
 print("hi")
