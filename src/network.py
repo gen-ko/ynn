@@ -52,7 +52,8 @@ class MLP(NeuralNetwork):
             self.h = h
         return h[-1]
 
-    def bprop(self, y):
+    # assuming
+    def bprop(self, loss, grad_loss = ):
         d = [y]
         di = y
         for layer, hi in reversed(zip(self.layers, self.h)):
