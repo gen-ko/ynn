@@ -104,6 +104,11 @@ class ProbabilisticGaussianLinear(Layer):
         self.d_b = numpy.zeros(self.b.shape, dtype=numpy.float32)
 
         self.w_loc =  numpy.random.uniform(low=-wi, high=wi, size=(input_dimension, output_dimension)).astype(numpy.float32)
+        self.b_loc = numpy.zeros((output_dimension, ), dtype=numpy.float32)
+
+        self.w_var = numpy.ones(shape=(input_dimension, output_dimension), dtype=numpy.float32)
+
+
 
 
     def forward(self, x):
