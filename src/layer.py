@@ -5,7 +5,7 @@ from src.util.status import TrainSettings
 # warnings.filterwarnings('error')
 
 name_pool: dict = {}
-
+EPS: numpy.float32 = 1e-10
 
 class Layer(object):
     def __init__(self, input_dimension, output_dimension, name: str='Base'):
@@ -96,23 +96,26 @@ class ProbabilisticGaussianLinear(Layer):
     def __init__(self, input_dimension, output_dimension, name: str = 'Linear'):
         Layer.__init__(self, input_dimension, output_dimension, name)
         wi = math.sqrt(6.0) / math.sqrt(input_dimension + output_dimension + 0.0)
-        self.w = 0
-        self.b = numpy.zeros((output_dimension, ), dtype=numpy.float32)
-        self.delta_w = numpy.zeros(shape=self.w.shape, dtype=numpy.float32)
-        self.delta_b = numpy.zeros(shape=self.b.shape, dtype=numpy.float32)
-        self.d_w = numpy.zeros(self.w.shape, dtype=numpy.float32)
-        self.d_b = numpy.zeros(self.b.shape, dtype=numpy.float32)
-
         self.w_loc =  numpy.random.uniform(low=-wi, high=wi, size=(input_dimension, output_dimension)).astype(numpy.float32)
         self.b_loc = numpy.zeros((output_dimension, ), dtype=numpy.float32)
+        self.delta_w = numpy.zeros(shape=self.w_loc.shape, dtype=numpy.float32)
+        self.delta_b = numpy.zeros(shape=self.b_loc.shape, dtype=numpy.float32)
+        self.d_w = numpy.zeros(self.w_loc.shape, dtype=numpy.float32)
+        self.d_b = numpy.zeros(self.b_loc.shape, dtype=numpy.float32)
 
-        self.w_var = numpy.ones(shape=(input_dimension, output_dimension), dtype=numpy.float32)
 
 
+        self.w_var = numpy.ones(shape=(input_dimension, output_dimension), dtype=numpy.float32) * EPS
+        self.b_var = numpy.ones(shape=(output_dimension), dtype=numpy.float32) * EPS
 
+    def sample(self):
+        self.w = numpy.random.normal(loc=self.w_loc, scale=self.w_var)
+        self.b = numpy.random.normal(loc=self.b_loc, scale=self.b_var)
+        return
 
     def forward(self, x):
-        return numpy.dot(x, (self.w + numpy.random.normal(loc=0.0, scale=1.0, size=self.w.shape))) + self.b
+        self.sample()
+        return numpy.dot(x, self.w) + self.b
 
     def backward(self, d_top, h_top, h_bottom):
         # slow, 5s
@@ -132,19 +135,21 @@ class ProbabilisticGaussianLinear(Layer):
         momentum = train_settings.momentum
         learning_rate = train_settings.learning_rate
 
-        tmp = self.d_w + regular * self.w
+        tmp = self.d_w + regular * self.w_loc
         self.delta_w = -learning_rate * tmp + momentum * self.delta_w
-        self.w += self.delta_w
+        self.w_loc += self.delta_w
+        self.w_var = abs(self.delta_w)
 
         tmp = self.d_b
         self.delta_b = -learning_rate * tmp + momentum * self.delta_b
-        self.b += self.delta_b
-        self.d_w = numpy.zeros(self.w.shape)
-        self.d_b = numpy.zeros(self.b.shape)
+        self.b_loc += self.delta_b
+        self.b_var = abs(self.delta_b)
+        self.d_w = numpy.zeros(self.w_loc.shape)
+        self.d_b = numpy.zeros(self.b_loc.shape)
         return
 
     def dump(self):
-        return [self.w, self.b]
+        return [self.w_loc, self.b_loc]
 
     def load(self, blob):
         self.w = blob[0]
