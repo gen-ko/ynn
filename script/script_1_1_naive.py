@@ -1,11 +1,18 @@
 # required python version: 3.6+
 
-import src.nlp as nlp
+if __name__ == "__main__" and __package__ is None:
+    from sys import path
+    from os.path import dirname as dir
+
+    path.append(dir(path[0]))
+    # __package__ = "src"
+
+
 import numpy
-import os
-import pickle
-from src import callback as cb
-from src import train as utf
+
+
+import src.callback as cb
+import src.train as utf
 
 from src.util.status import DataStore
 from src.util.status import TrainSettings
@@ -45,3 +52,4 @@ layers = [layer.Linear(784, 100),
 mynn = network.MLP(layers)
 
 utf.cross_train(mynn, data_store_train, data_store_valid, train_settings)
+

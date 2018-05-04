@@ -1,9 +1,9 @@
 # required python version: 3.6+
 
-import src.nlp as nlp
 import numpy
 import os
 import pickle
+src, file = os.path.split(__file__)
 from src import callback as cb
 from src import train as utf
 
