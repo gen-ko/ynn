@@ -53,6 +53,10 @@ def cross_train(nn: NeuralNetwork, data_store_train: DataStore, data_store_valid
     full_path = os.path.realpath(__file__)
     path, _ = os.path.split(full_path)
     savepath = os.path.join(path, '../output/dump', filename)
+    
+    metricpath = os.path.join(path, '../output/metric', filename)
+    with open(metricpath, 'wb+') as f:
+        pickle.dump([status_train, status_valid], f)
 
     with open(savepath, 'wb+') as f:
         pickle.dump(nn.dump(), f)

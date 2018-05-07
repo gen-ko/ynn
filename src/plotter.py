@@ -113,7 +113,20 @@ def plot_loss(status_train: utf.Status, status_valid: utf.Status):
     return
 
 
-
-
+def plot_general(vs: list, labels: [str], xlabel: str, ylabel: str, save_path: str, title: str=None):
+    plt.figure(1)
+    assert len(vs) == len(labels)
+    lines = []
+    for i in range(len(vs)):
+        line, = plt.plot(vs[i], label=labels[i])
+        lines.append(line)
+    plt.legend(handles=lines)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.savefig(save_path)
+    plt.close(1)
+    return
 
 # TODO: A plloter for RBM, NN, AutoEncoder needs to be implemented
+

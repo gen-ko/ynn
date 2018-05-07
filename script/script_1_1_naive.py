@@ -40,9 +40,41 @@ data_store_train = DataStore(x_train, y_train)
 data_store_valid = DataStore(x_valid, y_valid)
 
 #############################
+"""
 print('Settings 1')
+train_settings = TrainSettings(learning_rate=0.001, batch_size=16, momentum=0.0, plot_callback=cb.plot_callback,
+                                  loss_callback=cb.loss_callback, filename='script-1-1-1', epoch=200, prefix='e16')
+
+layers = [layer.Linear(784, 100),
+          #layer.BN(100, 100),
+          layer.Sigmoid(100),
+          layer.Linear(100, 10),
+          layer.Softmax(10)]
+
+mynn = network.MLP(layers)
+
+utf.cross_train(mynn, data_store_train, data_store_valid, train_settings)
+"""
+#########################
+"""
+print('Settings 2')
 train_settings = TrainSettings(learning_rate=0.002, batch_size=16, momentum=0.0, plot_callback=cb.plot_callback,
-                                  loss_callback=cb.loss_callback, filename='script-1-1-lr0_002', epoch=300, prefix='e16')
+                                  loss_callback=cb.loss_callback, filename='script-1-1-2', epoch=200, prefix='e16')
+
+layers = [layer.Linear(784, 100),
+          #layer.BN(100, 100),
+          layer.Sigmoid(100),
+          layer.Linear(100, 10),
+          layer.Softmax(10)]
+
+mynn = network.MLP(layers)
+
+utf.cross_train(mynn, data_store_train, data_store_valid, train_settings)
+"""
+#############################
+print('Settings 3')
+train_settings = TrainSettings(learning_rate=0.005, batch_size=16, momentum=0.0, plot_callback=cb.plot_callback,
+                                  loss_callback=cb.loss_callback, filename='script-1-1-3', epoch=200, prefix='e16')
 
 layers = [layer.Linear(784, 100),
           #layer.BN(100, 100),
@@ -54,3 +86,18 @@ mynn = network.MLP(layers)
 
 utf.cross_train(mynn, data_store_train, data_store_valid, train_settings)
 
+
+
+print('Settings 4')
+train_settings = TrainSettings(learning_rate=0.01, batch_size=16, momentum=0.0, plot_callback=cb.plot_callback,
+                                  loss_callback=cb.loss_callback, filename='script-1-1-4', epoch=300, prefix='e16')
+
+layers = [layer.Linear(784, 100),
+          #layer.BN(100, 100),
+          layer.Sigmoid(100),
+          layer.Linear(100, 10),
+          layer.Softmax(10)]
+
+mynn = network.MLP(layers)
+
+utf.cross_train(mynn, data_store_train, data_store_valid, train_settings)
