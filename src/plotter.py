@@ -1,4 +1,6 @@
 import numpy
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
 from src import util as uf
@@ -35,7 +37,7 @@ class PlotterLoss(PlotterBase):
                     f'k={k},hidden units={hidden_units},batch={batch_size}'
 
     def plot(self, current_epoch, loss_train, loss_valid):
-        plt.figure(1)
+        #plt.figure(1)
         line_1, = plt.plot(loss_train[0:current_epoch], label='train loss')
         line_2, = plt.plot(loss_valid[0:current_epoch], label='valid loss')
         plt.legend(handles=[line_1, line_2])
@@ -43,11 +45,11 @@ class PlotterLoss(PlotterBase):
         plt.ylabel('cross-entropy cost')
         plt.title(self.titletext)
         plt.savefig(self.savepath)
-        plt.close(1)
+        plt.close()
         return
 
 def plot_base(v1, v2, label, save_path):
-    plt.figure(1)
+    #plt.figure(1)
     label_1 = 'train' + ' ' + label
     label_2 = 'valid' + ' ' + label
     line_1, = plt.plot(v1, label=label_1)
@@ -57,7 +59,7 @@ def plot_base(v1, v2, label, save_path):
     plt.ylabel(label)
     #plt.title(self.titletext)
     plt.savefig(save_path)
-    plt.close(1)
+    plt.close()
     return
 
 
