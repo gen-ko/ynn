@@ -102,9 +102,6 @@ class ProbabilisticGaussianLinear(Layer):
         self.delta_b = numpy.zeros(shape=self.b_loc.shape, dtype=numpy.float32)
         self.d_w = numpy.zeros(self.w_loc.shape, dtype=numpy.float32)
         self.d_b = numpy.zeros(self.b_loc.shape, dtype=numpy.float32)
-
-
-
         self.w_var = numpy.ones(shape=(input_dimension, output_dimension), dtype=numpy.float32) * EPS
         self.b_var = numpy.ones(shape=(output_dimension), dtype=numpy.float32) * EPS
 

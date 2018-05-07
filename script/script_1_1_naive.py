@@ -40,8 +40,9 @@ data_store_train = DataStore(x_train, y_train)
 data_store_valid = DataStore(x_valid, y_valid)
 
 #############################
-train_settings = TrainSettings(learning_rate=0.01, batch_size=16, momentum=0.0, plot_callback=cb.plot_callback,
-                                  loss_callback=cb.loss_callback, filename='script-1-1', epoch=100, prefix='e16')
+print('Settings 1')
+train_settings = TrainSettings(learning_rate=0.002, batch_size=16, momentum=0.0, plot_callback=cb.plot_callback,
+                                  loss_callback=cb.loss_callback, filename='script-1-1-lr0_002', epoch=300, prefix='e16')
 
 layers = [layer.Linear(784, 100),
           #layer.BN(100, 100),
